@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-backend
+  namespace: sandee-staging
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8008
+      targetPort: 8008
+  selector:
+    app: sandee-backend

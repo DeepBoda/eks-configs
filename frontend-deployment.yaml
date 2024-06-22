@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-frontend
+  namespace: sandee-staging
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sandee-frontend
+  template:
+    metadata:
+      labels:
+        app: sandee-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: akash7275817/sandee-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_DEV_BASE_URL
+          value: "http://sandee-backend:8008/api/v1"

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-backend
+  namespace: sandee-staging
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sandee-backend
+  template:
+    metadata:
+      labels:
+        app: sandee-backend
+    spec:
+      containers:
+      - name: backend
+        image: akash7275817/sandee-backend:latest
+        ports:
+        - containerPort: 8008
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: NODE_ENV
+          value: "staging"
