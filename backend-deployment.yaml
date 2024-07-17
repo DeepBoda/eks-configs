@@ -24,4 +24,4 @@ spec:
         - name: REDIS_PORT
           value: "6379"
         - name: NODE_ENV
-          value: "staging"
+          value: "production"
