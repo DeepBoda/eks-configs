@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgis-script
-  namespace: sandee-staging
+  namespace: sandee
 data:
   init_postgis.sh: |
     #!/bin/bash

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-frontend
-  namespace: sandee-staging
+  namespace: sandee
 spec:
   replicas: 2
   selector:

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: pg-pv
-  namespace: sandee-staging
+  namespace: sandee
 spec:
   capacity:
     storage: 10Gi
@@ -17,7 +17,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pg-pvc
-  namespace: sandee-staging
+  namespace: sandee
 spec:
   accessModes:
     - ReadWriteOnce

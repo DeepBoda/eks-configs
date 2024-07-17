@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
-  namespace: sandee-staging
+  namespace: sandee
 spec:
   replicas: 1
   selector:
