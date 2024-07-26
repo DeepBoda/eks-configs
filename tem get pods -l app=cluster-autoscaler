@@ -1,0 +1,72 @@
+{
+    "cluster": {
+        "name": "sandee",
+        "arn": "arn:aws:eks:us-east-1:838645860193:cluster/sandee",
+        "createdAt": "2024-07-17T08:49:44.709000+00:00",
+        "version": "1.30",
+        "endpoint": "https://34EEA2A1E593E9D55AF02797F9A7F465.gr7.us-east-1.eks.amazonaws.com",
+        "roleArn": "arn:aws:iam::838645860193:role/eksctl-sandee-cluster-ServiceRole-XDuxDx6bnXIm",
+        "resourcesVpcConfig": {
+            "subnetIds": [
+                "subnet-0a33e8f73f6ab0b8a",
+                "subnet-0e301977f3a152c65",
+                "subnet-0b8f7f90f07195d66",
+                "subnet-0b8217a7e603e07c3"
+            ],
+            "securityGroupIds": [
+                "sg-0b5d1daa49da777cb"
+            ],
+            "clusterSecurityGroupId": "sg-078e9525fdede9026",
+            "vpcId": "vpc-02f40ee7a414a4512",
+            "endpointPublicAccess": true,
+            "endpointPrivateAccess": false,
+            "publicAccessCidrs": [
+                "0.0.0.0/0"
+            ]
+        },
+        "kubernetesNetworkConfig": {
+            "serviceIpv4Cidr": "10.100.0.0/16",
+            "ipFamily": "ipv4"
+        },
+        "logging": {
+            "clusterLogging": [
+                {
+                    "types": [
+                        "api",
+                        "audit",
+                        "authenticator",
+                        "controllerManager",
+                        "scheduler"
+                    ],
+                    "enabled": false
+                }
+            ]
+        },
+        "identity": {
+            "oidc": {
+                "issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/34EEA2A1E593E9D55AF02797F9A7F465"
+            }
+        },
+        "status": "ACTIVE",
+        "certificateAuthority": {
+            "data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJWUMxN0lwYnVseWN3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TkRBM01UY3dPRFE0TXpaYUZ3MHpOREEzTVRVd09EVXpNelphTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUUN5QmFBTmVGcUFWSWJaSWlnU0JwRHRHaGxaNytpREZrcTlSNzlzVUFqcjljaWk5eWdxWm15ZS82Yk4KZGtkMXZJOVR1cXVpaTlKLzczZm9FZVErblRLUnY5UE9Mb2dlYmZPeDVJUWhHSWxISjAwZWxQQ3Vackw1UG9qOAo3SFlEaFhWLzgrSnVjcnZxMldiTzJwcWRCak1TekhteVN3QWJsMkVHeTZXS3dqK1FwTmJGa3g2RkMxTEhSaTFuCjVMcEFuVWxhMmpweHJQMXNCYVpCVEU0SnFJdlNaUWUwc3FLQzhkem5td1Uvb3BWOEtENFlXK2U0MU94QU8wTEIKZkk2MHpJQTF3UjY3c3dadGFHc0tTakE4TXIwV1FEZEE3cWhJWnZxRHJwaEpnSDdJdkxucU5HN0s2a1ZGM2xtTApqUGU4MzNNNWtrM0tsMzhNamtGMHRESXByMDhyQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJRZ0EzdmVXSW1ydVlXMW43azR4c1B0di95V2VEQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQUxKL2lBL1lBYQppUU1BS3lKcnVXMnhqSzl2RDVadVVrdkcrYzlTMkNHckgzUmllU09wZjk5em5yUzZwQVZlRlZ2SlNOZnFkSGhVCjV3RDd3eW1OVU5TOEFoT0lQR0ViZzBxM2FOYVFhMEZFNXFOOGtpR1hPUXltb3FEQkNVWkQveEk4UVYrZVhxaXUKVDdaT3R3NkFNT3NPUHQwZDNubk05MEUrdXlJMGtpcEVxWHlpVFRMdGhkTFVhNlRBdFA3THozaXo4SDJRaThvbApMVFB2OVJMeWdQUjJocWpDUTV3SzVZanBPNy9DQVI5NC96MUVvcjl2UExnMnlDUkF0ZGZ0M2NsWnJ3TEpZRVlvCjZpUHJJT1plSEdvcTNjUi9uY29zTmZBTEViMWoya2ZLSlZib2R6TnN3MjMyeXVub2dpWks0Sk93OXcvRytneG8KMzgyQlVMWGxUSWZrCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+        },
+        "platformVersion": "eks.5",
+        "tags": {
+            "aws:cloudformation:stack-name": "eksctl-sandee-cluster",
+            "alpha.eksctl.io/cluster-name": "sandee",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:838645860193:stack/eksctl-sandee-cluster/73304870-4419-11ef-9101-12242ed5e9e7",
+            "eksctl.cluster.k8s.io/v1alpha1/cluster-name": "sandee",
+            "alpha.eksctl.io/cluster-oidc-enabled": "false",
+            "aws:cloudformation:logical-id": "ControlPlane",
+            "alpha.eksctl.io/eksctl-version": "0.187.0",
+            "Name": "eksctl-sandee-cluster/ControlPlane"
+        },
+        "health": {
+            "issues": []
+        },
+        "accessConfig": {
+            "authenticationMode": "API_AND_CONFIG_MAP"
+        }
+    }
+}
