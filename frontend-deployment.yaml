@@ -8,6 +8,11 @@ spec:
   selector:
     matchLabels:
       app: sandee-frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
   template:
     metadata:
       labels:
@@ -15,16 +20,11 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: akash7275817/sandee-frontend:latest
-        ports:
-        - containerPort: 3000
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+        imagePullPolicy: Always
         env:
         - name: NEXT_PUBLIC_DEV_BASE_URL
-          value: "http://sandee-backend:8008/api/v1"
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "2000m"
+          value: http://sandee-backend:8008/api/v1
+        ports:
+        - containerPort: 3000
+

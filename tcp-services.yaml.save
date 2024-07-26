@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+name: tcp-services
+  namespace: ingress-nginx
+  resourceVersion: "1478037"
+  uid: bb71e0eb-d5fc-44b0-8109-1994a4b41935
+data:
+  "6379": "sandee/redis:6379"
+  "9200": "sandee/elasticsearch:9200"

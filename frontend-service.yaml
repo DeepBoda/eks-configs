@@ -4,9 +4,10 @@ metadata:
   name: sandee-frontend
   namespace: sandee
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
-    - port: 3000
-      targetPort: 3000
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30000
   selector:
     app: sandee-frontend

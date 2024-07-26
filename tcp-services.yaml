@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tcp-services
+  namespace: ingress-nginx
+
+data:
+  "6379":  "sandee/redis:6379"
+  "9200":  "sandee/elasticsearch:9200"
+
