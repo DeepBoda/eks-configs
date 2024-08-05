@@ -4,10 +4,15 @@ metadata:
   name: sandee-admin
   namespace: sandee
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: sandee-admin
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
   template:
     metadata:
       labels:
@@ -16,5 +21,7 @@ spec:
       containers:
       - name: admin
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/admin:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
+

@@ -17,8 +17,8 @@ spec:
     spec:
       serviceAccountName: cluster-autoscaler
       containers:
-        - name: cluster-autoscaler
-          image: k8s.gcr.io/autoscaling/cluster-autoscaler:v1.21.0
+        - image: k8s.gcr.io/autoscaling/cluster-autoscaler:v1.21.0
+          name: cluster-autoscaler
           resources:
             limits:
               cpu: 300m
@@ -41,6 +41,10 @@ spec:
             - --skip-nodes-with-system-pods=true
             - --balance-similar-node-groups=true
             - --cluster-name=sandee
+          volumeMounts:
+            - name: aws-iam-token
+              mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+              readOnly: true
       volumes:
         - name: aws-iam-token
           projected:
@@ -48,19 +52,3 @@ spec:
               - serviceAccountToken:
                   path: token
                   expirationSeconds: 86400
-        - name: kube-api-access
-          projected:
-            sources:
-              - serviceAccountToken:
-                  path: token
-                  expirationSeconds: 3600
-              - configMap:
-                  name: kube-root-ca.crt
-                  items:
-                    - key: ca.crt
-                      path: ca.crt
-              - downwardAPI:
-                  items:
-                    - path: namespace
-                      fieldRef:
-                        fieldPath: metadata.namespace

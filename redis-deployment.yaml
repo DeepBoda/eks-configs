@@ -4,7 +4,7 @@ metadata:
   name: redis
   namespace: sandee
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: redis
@@ -50,6 +50,13 @@ spec:
         - mountPath: /etc/redis-stack.conf
           name: redis-config
           subPath: local-redis-stack.conf
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "6Gi"
+            cpu: "2"
       volumes:
       - name: redis-storage
         persistentVolumeClaim:

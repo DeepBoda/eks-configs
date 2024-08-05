@@ -27,4 +27,16 @@ data:
     appendfsync everysec
     loglevel warning
     logfile "/data/redis.log"
-
+    tcp-keepalive 300
+    # Enable slow log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+    # Optimize networking
+    tcp-backlog 511
+    # Disable unnecessary features for performance
+    latency-monitor-threshold 0
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    # Ensure persistence safety
+    stop-writes-on-bgsave-error yes

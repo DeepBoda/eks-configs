@@ -4,15 +4,15 @@ metadata:
   name: sandee-frontend
   namespace: sandee
 spec:
-  replicas: 2
+  replicas: 6
   selector:
     matchLabels:
       app: sandee-frontend
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
+      maxSurge: 50%
+      maxUnavailable: 50%
   template:
     metadata:
       labels:

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-cron
+  namespace: sandee
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sandee-cron
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sandee-cron
+    spec:
+      containers:
+      - image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/cron:latest
+        imagePullPolicy: Always
+        name: cron
+        ports:
+        - containerPort: 5001
+
