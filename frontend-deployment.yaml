@@ -4,7 +4,7 @@ metadata:
   name: sandee-frontend
   namespace: sandee
 spec:
-  replicas: 6
+  replicas: 3
   selector:
     matchLabels:
       app: sandee-frontend
