@@ -11,4 +11,3 @@ spec:
     nodePort: 30006
   selector:
     app: redis
-

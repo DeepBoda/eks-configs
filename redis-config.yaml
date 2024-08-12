@@ -27,7 +27,7 @@ data:
     appendfsync everysec
     loglevel warning
     logfile "/data/redis.log"
-    tcp-keepalive 300
+    tcp-keepalive 60
     # Enable slow log
     slowlog-log-slower-than 10000
     slowlog-max-len 128
