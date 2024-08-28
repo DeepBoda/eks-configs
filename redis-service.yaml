@@ -11,3 +11,18 @@ spec:
     nodePort: 30006
   selector:
     app: redis
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: sandee
+spec:
+  type: NodePort
+  ports:
+  - port: 26379
+    targetPort: 26379
+    nodePort: 30007
+  selector:
+    app: redis

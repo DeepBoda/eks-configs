@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: redis-pv
-  namespace: sandee
+  name: redis-pv-new
 spec:
   capacity:
-    storage: 10Gi
+    storage: 20Gi
   accessModes:
     - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data/redis"
+  awsElasticBlockStore:
+    volumeID: vol-0439d0e0f127e5ec4
+    fsType: ext4
+  storageClassName: gp3
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-storage
