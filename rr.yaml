@@ -6,19 +6,20 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/proxy-body-size: "10g"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force SSL redirection
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+      - sandee.com
+      - eks-admin.sandee.com
+      - admin.sandee.com
+      - eks-backend.sandee.com
+      - backend-v2.sandee.com
+      - eks-redis.sandee.com
+      - eks-elasticsearch.sandee.com
+    secretName: sandee-tls  # Your TLS secret covering all hosts
   rules:
-#  - host: eks.sandee.com
-#    http:
-#      paths:
-#      - path: /
-#        pathType: Prefix
-#        backend:
-#          service:
-#            name: sandee-frontend
-#            port:
-#              number: 3000
   - host: sandee.com
     http:
       paths:
