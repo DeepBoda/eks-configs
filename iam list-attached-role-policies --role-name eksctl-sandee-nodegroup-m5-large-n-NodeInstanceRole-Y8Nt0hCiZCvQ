@@ -1,0 +1,28 @@
+{
+    "AttachedPolicies": [
+        {
+            "PolicyName": "FullAccessPolicy",
+            "PolicyArn": "arn:aws:iam::838645860193:policy/FullAccessPolicy"
+        },
+        {
+            "PolicyName": "LoadBalancerPolicy",
+            "PolicyArn": "arn:aws:iam::838645860193:policy/LoadBalancerPolicy"
+        },
+        {
+            "PolicyName": "AmazonSSMManagedInstanceCore",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        },
+        {
+            "PolicyName": "AmazonEKS_CNI_Policy",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        },
+        {
+            "PolicyName": "AmazonEC2ContainerRegistryReadOnly",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        },
+        {
+            "PolicyName": "AmazonEKSWorkerNodePolicy",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        }
+    ]
+}

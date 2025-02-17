@@ -1,0 +1,25 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "elasticloadbalancing:*",
+                "ec2:*",
+                "iam:PassRole",
+                "cloudwatch:*",
+                "logs:*",
+                "tag:GetResources",
+                "tag:TagResources",
+                "tag:UntagResources",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:DescribeStackResources",
+                "cloudformation:DescribeStacks",
+                "cloudformation:ListStackResources",
+                "cloudformation:ListStacks"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+

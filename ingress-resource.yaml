@@ -18,17 +18,17 @@ spec:
 #          service:
 #            name: sandee-frontend
 #            port:
+#             number: 3000
+#  - host: sandee.com
+#    http:
+#      paths:
+#      - path: /
+#        pathType: Prefix
+#        backend:
+#          service:
+#            name: sandee-frontend
+#            port:
 #              number: 3000
-  - host: sandee.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: sandee-frontend
-            port:
-              number: 3000
   - host: eks-admin.sandee.com
     http:
       paths:
