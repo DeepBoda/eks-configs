@@ -1,0 +1,16 @@
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+|                                                                  DescribeAutoScalingGroups                                                                  |
++-----------------------------------+--------------------+-----------------------------------------------------------+---------------------+------------------+
+|                Key                | PropagateAtLaunch  |                        ResourceId                         |    ResourceType     |      Value       |
++-----------------------------------+--------------------+-----------------------------------------------------------+---------------------+------------------+
+|  [1m[34meks:cluster-name[0m                 |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34msandee[0m          |
+|  [1m[34meks:nodegroup-name[0m               |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mm5-large-group[0m  |
+|  [1m[34mk8s.io/cluster-autoscaler/enabled[0m|  [1m[34mTrue[0m              |  [1m[34meks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mtrue[0m            |
+|  [1m[34mk8s.io/cluster-autoscaler/sandee[0m |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mtrue[0m            |
+|  [1m[34mkubernetes.io/cluster/sandee[0m     |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mowned[0m           |
+|  [1m[34meks:cluster-name[0m                 |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-nodes-40c86ca0-41df-4f9c-fb43-2743be58b779[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34msandee[0m          |
+|  [1m[34meks:nodegroup-name[0m               |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-nodes-40c86ca0-41df-4f9c-fb43-2743be58b779[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mm5-large-nodes[0m  |
+|  [1m[34mk8s.io/cluster-autoscaler/enabled[0m|  [1m[34mTrue[0m              |  [1m[34meks-m5-large-nodes-40c86ca0-41df-4f9c-fb43-2743be58b779[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mtrue[0m            |
+|  [1m[34mk8s.io/cluster-autoscaler/sandee[0m |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-nodes-40c86ca0-41df-4f9c-fb43-2743be58b779[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mtrue[0m            |
+|  [1m[34mkubernetes.io/cluster/sandee[0m     |  [1m[34mTrue[0m              |  [1m[34meks-m5-large-nodes-40c86ca0-41df-4f9c-fb43-2743be58b779[0m  |  [1m[34mauto-scaling-group[0m |  [1m[34mowned[0m           |
++-----------------------------------+--------------------+-----------------------------------------------------------+---------------------+------------------+

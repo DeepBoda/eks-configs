@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.master.nameOverride }}
+  namespace: sandee
+spec:
+  serviceName: {{ .Values.master.nameOverride }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.master.nameOverride }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.master.nameOverride }}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ip-192-168-56-229.ec2.internal  # 🚨 Avoid high-memory node
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - redis-stack-master
+                  - redis-stack-replica
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: redis-stack
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command: ["redis-server", "/opt/redis-stack/etc/redis-stack.conf"]
+        volumeMounts:
+        - name: redis-stack-config
+          mountPath: /opt/redis-stack/etc/redis-stack.conf
+          subPath: redis-stack.conf
+        - name: redis-data
+          mountPath: /data  # ✅ Ensure Redis writes to Persistent Storage
+        ports:
+        - containerPort: 6379
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: redis-stack-config
+        configMap:
+          name: redis-stack-config
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: {{ .Values.master.persistence.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.master.persistence.size }}
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.replica.nameOverride }}
+  namespace: sandee
+spec:
+  serviceName: {{ .Values.replica.nameOverride }}
+  replicas: {{ .Values.replica.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.replica.nameOverride }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.replica.nameOverride }}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ip-192-168-56-229.ec2.internal  # 🚨 Avoid high-memory node
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - redis-stack-master
+                  - redis-stack-replica
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: redis-stack
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command: ["redis-server", "/opt/redis-stack/etc/redis-stack.conf"]
+        volumeMounts:
+        - name: redis-stack-config
+          mountPath: /opt/redis-stack/etc/redis-stack.conf
+          subPath: redis-stack.conf
+        - name: redis-data
+          mountPath: /data  # ✅ Ensure Redis writes to Persistent Storage
+        ports:
+        - containerPort: 6379
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: redis-stack-config
+        configMap:
+          name: redis-stack-config
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: {{ .Values.replica.persistence.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.replica.persistence.size }}
+

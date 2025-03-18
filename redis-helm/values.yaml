@@ -1,0 +1,87 @@
+global:
+  storageClass: "redis-storage-class"
+
+architecture: replication  # ✅ Enables Master-Replica setup
+
+auth:
+  enabled: false  # No authentication
+
+image:
+  repository: redis/redis-stack  # ✅ Use Redis Stack image
+  tag: latest
+
+master:
+  nameOverride: redis-stack-master
+  persistence:
+    enabled: true
+    path: /data  # ✅ Ensure Redis writes to the correct directory
+    size: 20Gi
+    storageClass: redis-storage-class  # ✅ Use correct StorageClass
+  resources:
+    requests:
+      memory: "3Gi"
+      cpu: "500m"
+    limits:
+      memory: "6Gi"
+      cpu: "2000m"
+
+  extraArgs:
+    - "--dir /data"
+    - "--dbfilename dump.rdb"
+    - "--appendonly yes"
+    - "--appendfsync everysec"
+    - "--save 60 1000 300 100"  # ✅ Enable RDB snapshot every 60s if 1000 writes occur
+
+  extraVolumes:
+    - name: redis-stack-config
+      configMap:
+        name: redis-stack-config
+
+  extraVolumeMounts:
+    - name: redis-stack-config
+      mountPath: /opt/redis-stack/etc/redis-stack.conf
+      subPath: redis-stack.conf
+    - name: redis-data
+      mountPath: /data  # ✅ Mount /data for persistent storage
+
+replica:
+  nameOverride: redis-stack-replica
+  replicaCount: 1
+  persistence:
+    enabled: true
+    path: /data  # ✅ Ensure Redis writes to the correct directory
+    size: 10Gi
+    storageClass: redis-storage-class
+  resources:
+    requests:
+      memory: "3Gi"
+      cpu: "500m"
+    limits:
+      memory: "5Gi"
+      cpu: "1500m"
+
+  extraArgs:
+    - "--dir /data"
+    - "--dbfilename dump.rdb"
+    - "--appendonly yes"
+    - "--appendfsync everysec"
+    - "--save 60 1000 300 100"  # ✅ Enable RDB snapshot every 60s if 1000 writes occur
+
+  extraVolumes:
+    - name: redis-stack-config
+      configMap:
+        name: redis-stack-config
+
+  extraVolumeMounts:
+    - name: redis-stack-config
+      mountPath: /opt/redis-stack/etc/redis-stack.conf
+      subPath: redis-stack.conf
+    - name: redis-data
+      mountPath: /data  # ✅ Mount /data for persistent storage
+
+service:
+  master:
+    type: ClusterIP
+  replica:
+    type: ClusterIP
+

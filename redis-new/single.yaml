@@ -27,7 +27,7 @@ data:
     loadmodule /opt/redis-stack/lib/rejson.so
     loadmodule /opt/redis-stack/lib/redisbloom.so
     maxmemory 6gb
-    maxmemory-policy volatile-lru
+    maxmemory-policy allkeys-lru
     maxmemory-samples 5
 
 
@@ -40,21 +40,21 @@ data:
     # AOF Persistence
     appendonly yes
     appendfilename "appendonly.aof"
-    appendfsync always
-    no-appendfsync-on-rewrite no
+    appendfsync everysec
+    no-appendfsync-on-rewrite yes
     auto-aof-rewrite-percentage 100
     auto-aof-rewrite-min-size 64mb
     aof-load-truncated yes
 
     # Logging and Performance
-    loglevel notice
+    loglevel warning
     logfile "/data/redis.log"
-    tcp-keepalive 60
-    tcp-backlog 2048
-    io-threads 4
+    tcp-keepalive 30
+    tcp-backlog 5120
+    io-threads 8
     io-threads-do-reads yes
-    slowlog-log-slower-than 10000
-    slowlog-max-len 1024
+    slowlog-log-slower-than 50000
+    slowlog-max-len 512
     latency-monitor-threshold 0
     lazyfree-lazy-eviction yes
     lazyfree-lazy-expire yes
@@ -63,10 +63,12 @@ data:
     hz 100
     dynamic-hz yes
     client-output-buffer-limit normal 0 0 0
-    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit replica 64mb 16mb 60
     client-output-buffer-limit pubsub 32mb 8mb 60
     rename-command FLUSHDB ""
     rename-command FLUSHALL ""
+    rename-command REPLICAOF ""
+    rename-command SLAVEOF ""
 
 ---
 apiVersion: apps/v1

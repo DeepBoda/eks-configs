@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: sandee
+data:
+  redis-stack.conf: |
+    bind 0.0.0.0
+    protected-mode no
+    loadmodule /opt/redis-stack/lib/rediscompat.so
+    loadmodule /opt/redis-stack/lib/redisearch.so
+    loadmodule /opt/redis-stack/lib/redistimeseries.so
+    loadmodule /opt/redis-stack/lib/rejson.so
+    loadmodule /opt/redis-stack/lib/redisbloom.so
+    maxmemory 6gb
+    maxmemory-policy noeviction
+    maxmemory-samples 5
+
+    save 60 1000
+    save 300 100
+    rdbcompression yes
+    dbfilename dump.rdb
+    dir /data
+
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync always
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+
+    loglevel notice
+    logfile "/data/redis.log"
+    tcp-keepalive 60
+    tcp-backlog 2048
+    io-threads 4
+    io-threads-do-reads yes
+    slowlog-log-slower-than 10000
+    slowlog-max-len 1024
+    latency-monitor-threshold 0
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    stop-writes-on-bgsave-error yes
+    hz 100
+    dynamic-hz yes
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+    rename-command FLUSHDB ""
+    rename-command FLUSHALL ""
+    rename-command REPLICAOF ""
+    rename-command SLAVEOF ""
+

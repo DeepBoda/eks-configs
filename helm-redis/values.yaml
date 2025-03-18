@@ -1,0 +1,52 @@
+global:
+  storageClass: "redis-storage-class"
+
+architecture: standalone
+
+auth:
+  enabled: false  # Disable auth (or set it if needed)
+
+master:
+  image:
+    repository: redis/redis-stack  # ✅ Use Redis Stack image
+    tag: latest
+  persistence:
+    enabled: true
+    size: 20Gi
+  resources:
+    requests:
+      memory: "3Gi"
+      cpu: "1000m"
+    limits:
+      memory: "6Gi"
+      cpu: "2"
+
+  extraArgs:
+    - /opt/redis-stack/etc/redis-stack.conf
+
+  extraVolumes:
+    - name: redis-config
+      configMap:
+        name: redis-config
+
+  extraVolumeMounts:
+    - name: redis-config
+      mountPath: /opt/redis-stack/etc/redis-stack.conf  # ✅ Correct path for Redis Stack
+      subPath: redis-stack.conf
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    command:
+      - redis-cli
+      - ping
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    command:
+      - redis-cli
+      - ping
+
