@@ -27,3 +27,30 @@ spec:
       nodePort: 31017  # ✅ Unique Replica NodePort
   selector:
     app.kubernetes.io/name: redis-stack-replica
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-stack-sentinel
+  namespace: sandee
+spec:
+  type: NodePort
+  ports:
+    - port: 26379
+      targetPort: 26379
+      nodePort: 31018 # ✅ Unique Replica NodePort
+  selector:
+    app.kubernetes.io/name: redis-stack-sentinel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-stack-master-headless
+  namespace: sandee
+spec:
+  clusterIP: None # ✅ Mandatory for StatefulSet DNS resolution
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app.kubernetes.io/name: redis-stack-master

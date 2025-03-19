@@ -4,7 +4,7 @@ global:
 architecture: replication  # ✅ Enables Master-Replica setup
 
 auth:
-  enabled: false  # No authentication
+  enabled: false  # No authentication (Change to `true` if needed)
 
 image:
   repository: redis/redis-stack  # ✅ Use Redis Stack image
@@ -22,8 +22,8 @@ master:
       memory: "3Gi"
       cpu: "500m"
     limits:
-      memory: "6Gi"
-      cpu: "2000m"
+      memory: "5Gi"
+      cpu: "1800m"
 
   extraArgs:
     - "--dir /data"
@@ -31,22 +31,26 @@ master:
     - "--appendonly yes"
     - "--appendfsync everysec"
     - "--save 60 1000 300 100"  # ✅ Enable RDB snapshot every 60s if 1000 writes occur
+    - "--repl-backlog-size 10mb"
+    - "--repl-diskless-sync yes"
+    - "--repl-diskless-sync-delay 5"
+    - "--maxclients 10000"
 
   extraVolumes:
-    - name: redis-stack-config
+    - name: redis-stack-master-config
       configMap:
-        name: redis-stack-config
+        name: redis-stack-master-config
 
   extraVolumeMounts:
-    - name: redis-stack-config
-      mountPath: /opt/redis-stack/etc/redis-stack.conf
-      subPath: redis-stack.conf
+    - name: redis-stack-master-config
+      mountPath: /opt/redis-stack/etc/redis-stack-master.conf
+      subPath: redis-stack-master.conf
     - name: redis-data
       mountPath: /data  # ✅ Mount /data for persistent storage
 
 replica:
   nameOverride: redis-stack-replica
-  replicaCount: 1
+  replicaCount: 3  # ✅ Increased for redundancy
   persistence:
     enabled: true
     path: /data  # ✅ Ensure Redis writes to the correct directory
@@ -58,7 +62,7 @@ replica:
       cpu: "500m"
     limits:
       memory: "5Gi"
-      cpu: "1500m"
+      cpu: "1800m"
 
   extraArgs:
     - "--dir /data"
@@ -66,22 +70,31 @@ replica:
     - "--appendonly yes"
     - "--appendfsync everysec"
     - "--save 60 1000 300 100"  # ✅ Enable RDB snapshot every 60s if 1000 writes occur
+    - "--repl-diskless-sync yes"  # ✅ Enable diskless sync to reduce I/O impact
+    - "--repl-diskless-sync-delay 5"  # ✅ Delay sync start to improve stability
+    - "--maxclients 10000"
 
   extraVolumes:
-    - name: redis-stack-config
+    - name: redis-stack-replica-config
       configMap:
-        name: redis-stack-config
+        name: redis-stack-replica-config
 
   extraVolumeMounts:
-    - name: redis-stack-config
-      mountPath: /opt/redis-stack/etc/redis-stack.conf
-      subPath: redis-stack.conf
+    - name: redis-stack-replica-config
+      mountPath: /opt/redis-stack/etc/redis-stack-replica.conf
+      subPath: redis-stack-replica.conf
     - name: redis-data
       mountPath: /data  # ✅ Mount /data for persistent storage
+
+sentinel:
+  enabled: true  # ✅ Enable Redis Sentinel for automatic failover
+  quorum: 3  # ✅ Number of votes needed to trigger failover
+  replicas: 3
 
 service:
   master:
     type: ClusterIP
   replica:
     type: ClusterIP
-
+  sentinel:
+    type: ClusterIP

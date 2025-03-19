@@ -1,28 +1,83 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: redis-stack-config
-  namespace: sandee
+  name: redis-stack-master-config
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/managed-by: Helm
   annotations:
-    meta.helm.sh/release-name: redis-stack-helm
-    meta.helm.sh/release-namespace: sandee
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
 data:
-  redis-stack.conf: |
+  redis-stack-master.conf: |
     bind 0.0.0.0
     protected-mode no
     loadmodule /opt/redis-stack/lib/redisearch.so
     loadmodule /opt/redis-stack/lib/rejson.so
     loadmodule /opt/redis-stack/lib/redisbloom.so
     loadmodule /opt/redis-stack/lib/redistimeseries.so
-    maxmemory 6gb
+    maxmemory 6g
     maxmemory-policy noeviction
     save 60 1000
     save 300 100
     dbfilename dump.rdb
-    dir /data
+    dir {{ .Values.master.persistence.path }}
     appendonly yes
     appendfsync everysec
     slowlog-max-len 1024
     hz 100
+
+    # ✅ Master should always be writable
+    slave-read-only no
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-stack-replica-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+data:
+  redis-stack-replica.conf: |
+    bind 0.0.0.0
+    protected-mode no
+    loadmodule /opt/redis-stack/lib/redisearch.so
+    loadmodule /opt/redis-stack/lib/rejson.so
+    loadmodule /opt/redis-stack/lib/redisbloom.so
+    loadmodule /opt/redis-stack/lib/redistimeseries.so
+    maxmemory 5g
+    maxmemory-policy noeviction
+    save 60 1000
+    save 300 100
+    dbfilename dump.rdb
+    dir {{ .Values.replica.persistence.path }}
+    appendonly yes
+    appendfsync everysec
+    slowlog-max-len 1024
+    hz 100
+
+    # ✅ Ensure Replica follows the current Master
+    replicaof {{ .Values.master.nameOverride }} 6379
+
+    # ✅ Prevent accidental writes to the Replica
+    replica-read-only yes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-sentinel-config
+  namespace: {{ .Release.Namespace }}
+data:
+  sentinel.conf: |
+    port 26379
+    sentinel monitor mymaster redis-stack-master-0.sandee.svc.cluster.local 6379 2
+    sentinel down-after-milliseconds mymaster 5000
+    sentinel failover-timeout mymaster 10000
+    sentinel parallel-syncs mymaster 3
+    sentinel resolve-hostnames yes
+    sentinel announce-ip redis-stack-sentinel
+    sentinel announce-port 26379
+
