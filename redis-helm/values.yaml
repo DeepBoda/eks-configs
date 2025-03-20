@@ -50,7 +50,7 @@ master:
 
 replica:
   nameOverride: redis-stack-replica
-  replicaCount: 3  # ✅ Increased for redundancy
+  replicaCount: 2  # ✅ Increased for redundancy
   persistence:
     enabled: true
     path: /data  # ✅ Ensure Redis writes to the correct directory
@@ -88,8 +88,8 @@ replica:
 
 sentinel:
   enabled: true  # ✅ Enable Redis Sentinel for automatic failover
-  quorum: 3  # ✅ Number of votes needed to trigger failover
-  replicas: 3
+  quorum: 2  # ✅ Number of votes needed to trigger failover
+  replicas: 2
 
 service:
   master:
