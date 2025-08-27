@@ -4,30 +4,34 @@ metadata:
   name: sandee-backend
   namespace: sandee
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: sandee-backend
   strategy:
-    rollingUpdate:
-      maxSurge: 50%
-      maxUnavailable: 50%
     type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
   template:
     metadata:
       labels:
         app: sandee-backend
     spec:
       containers:
-      - env:
+      - name: backend
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
+        imagePullPolicy: Always
+        env:
         - name: REDIS_HOST
           value: redis
         - name: REDIS_PORT
           value: "6379"
         - name: NODE_ENV
           value: production
-        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
-        imagePullPolicy: Always
-        name: backend
         ports:
         - containerPort: 8008
+        resources:
+          requests:
+            cpu: "20m"
+            memory: "100Mi"

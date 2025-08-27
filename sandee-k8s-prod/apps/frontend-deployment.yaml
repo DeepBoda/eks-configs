@@ -4,7 +4,7 @@ metadata:
   name: sandee-frontend
   namespace: sandee
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: sandee-frontend
@@ -31,7 +31,7 @@ spec:
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: "kubernetes.io/hostname"
-          whenUnsatisfiable: DoNotSchedule
+          whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app: sandee-frontend
@@ -56,3 +56,7 @@ spec:
             port: 3000
           initialDelaySeconds: 20
           periodSeconds: 10
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"

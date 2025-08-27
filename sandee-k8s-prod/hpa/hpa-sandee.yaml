@@ -7,22 +7,22 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: sandee-backend  # <-- Target your backend deployment
-  minReplicas: 4
-  maxReplicas: 12
+    name: sandee-backend
+  minReplicas: 1
+  maxReplicas: 2
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 50  # Scale when CPU usage >50%
+        averageUtilization: 60  # Scale when CPU > 60%
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 70  # Scale when Memory usage >70%
+        averageUtilization: 75  # Scale when Memory > 75%
 
 ---
 apiVersion: autoscaling/v2
@@ -34,20 +34,20 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: sandee-frontend  # <-- Target your frontend deployment
-  minReplicas: 4
-  maxReplicas: 8
+    name: sandee-frontend
+  minReplicas: 1
+  maxReplicas: 2
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 50  # Scale when CPU usage >50%
+        averageUtilization: 60  # Scale when CPU > 60%
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 70  # Scale when Memory usage >70%
+        averageUtilization: 75  # Scale when Memory > 75%
 

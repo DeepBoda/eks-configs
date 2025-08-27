@@ -1,0 +1,243 @@
+{
+    "AutoScalingGroups": [
+        {
+            "AutoScalingGroupName": "eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+            "AutoScalingGroupARN": "arn:aws:autoscaling:us-east-1:838645860193:autoScalingGroup:215db32c-e815-4fb0-82e8-ddc230d7c0d6:autoScalingGroupName/eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+            "MixedInstancesPolicy": {
+                "LaunchTemplate": {
+                    "LaunchTemplateSpecification": {
+                        "LaunchTemplateId": "lt-0481dcb962ecfca8e",
+                        "LaunchTemplateName": "eks-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                        "Version": "4"
+                    },
+                    "Overrides": [
+                        {
+                            "InstanceType": "m5.large"
+                        }
+                    ]
+                },
+                "InstancesDistribution": {
+                    "OnDemandAllocationStrategy": "prioritized",
+                    "OnDemandBaseCapacity": 0,
+                    "OnDemandPercentageAboveBaseCapacity": 100,
+                    "SpotAllocationStrategy": "lowest-price",
+                    "SpotInstancePools": 2
+                }
+            },
+            "MinSize": 5,
+            "MaxSize": 6,
+            "DesiredCapacity": 5,
+            "DefaultCooldown": 300,
+            "AvailabilityZones": [
+                "us-east-1b",
+                "us-east-1c"
+            ],
+            "LoadBalancerNames": [],
+            "TargetGroupARNs": [],
+            "HealthCheckType": "EC2",
+            "HealthCheckGracePeriod": 15,
+            "Instances": [
+                {
+                    "InstanceId": "i-05b922f6af2b55882",
+                    "InstanceType": "m5.large",
+                    "AvailabilityZone": "us-east-1b",
+                    "LifecycleState": "InService",
+                    "HealthStatus": "Healthy",
+                    "LaunchTemplate": {
+                        "LaunchTemplateId": "lt-0481dcb962ecfca8e",
+                        "LaunchTemplateName": "eks-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                        "Version": "4"
+                    },
+                    "ProtectedFromScaleIn": false
+                },
+                {
+                    "InstanceId": "i-070e686e58a4d37a1",
+                    "InstanceType": "m5.large",
+                    "AvailabilityZone": "us-east-1c",
+                    "LifecycleState": "InService",
+                    "HealthStatus": "Healthy",
+                    "LaunchTemplate": {
+                        "LaunchTemplateId": "lt-0481dcb962ecfca8e",
+                        "LaunchTemplateName": "eks-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                        "Version": "4"
+                    },
+                    "ProtectedFromScaleIn": false
+                },
+                {
+                    "InstanceId": "i-08282595e8550b43c",
+                    "InstanceType": "m5.large",
+                    "AvailabilityZone": "us-east-1c",
+                    "LifecycleState": "InService",
+                    "HealthStatus": "Healthy",
+                    "LaunchTemplate": {
+                        "LaunchTemplateId": "lt-0481dcb962ecfca8e",
+                        "LaunchTemplateName": "eks-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                        "Version": "4"
+                    },
+                    "ProtectedFromScaleIn": false
+                },
+                {
+                    "InstanceId": "i-0a2f24f8f2131e210",
+                    "InstanceType": "m5.large",
+                    "AvailabilityZone": "us-east-1b",
+                    "LifecycleState": "InService",
+                    "HealthStatus": "Healthy",
+                    "LaunchTemplate": {
+                        "LaunchTemplateId": "lt-0481dcb962ecfca8e",
+                        "LaunchTemplateName": "eks-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                        "Version": "4"
+                    },
+                    "ProtectedFromScaleIn": false
+                },
+                {
+                    "InstanceId": "i-0fec5eb0aa67a19e9",
+                    "InstanceType": "m5.large",
+                    "AvailabilityZone": "us-east-1b",
+                    "LifecycleState": "InService",
+                    "HealthStatus": "Healthy",
+                    "LaunchTemplate": {
+                        "LaunchTemplateId": "lt-0481dcb962ecfca8e",
+                        "LaunchTemplateName": "eks-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                        "Version": "4"
+                    },
+                    "ProtectedFromScaleIn": false
+                }
+            ],
+            "CreatedTime": "2024-08-20T11:27:01.876000+00:00",
+            "SuspendedProcesses": [],
+            "VPCZoneIdentifier": "subnet-0e301977f3a152c65,subnet-0a33e8f73f6ab0b8a",
+            "EnabledMetrics": [
+                {
+                    "Metric": "GroupDesiredCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupInServiceInstances",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupAndWarmPoolDesiredCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "WarmPoolPendingCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "WarmPoolDesiredCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "WarmPoolWarmedCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupMaxSize",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupAndWarmPoolTotalCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupTerminatingInstances",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupStandbyInstances",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "WarmPoolMinSize",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupMinSize",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupStandbyCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupInServiceCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupPendingInstances",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupTerminatingCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupPendingCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupTotalInstances",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "WarmPoolTerminatingCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "GroupTotalCapacity",
+                    "Granularity": "1Minute"
+                },
+                {
+                    "Metric": "WarmPoolTotalCapacity",
+                    "Granularity": "1Minute"
+                }
+            ],
+            "Tags": [
+                {
+                    "ResourceId": "eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                    "ResourceType": "auto-scaling-group",
+                    "Key": "eks:cluster-name",
+                    "Value": "sandee",
+                    "PropagateAtLaunch": true
+                },
+                {
+                    "ResourceId": "eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                    "ResourceType": "auto-scaling-group",
+                    "Key": "eks:nodegroup-name",
+                    "Value": "m5-large-group",
+                    "PropagateAtLaunch": true
+                },
+                {
+                    "ResourceId": "eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                    "ResourceType": "auto-scaling-group",
+                    "Key": "k8s.io/cluster-autoscaler/enabled",
+                    "Value": "true",
+                    "PropagateAtLaunch": true
+                },
+                {
+                    "ResourceId": "eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                    "ResourceType": "auto-scaling-group",
+                    "Key": "k8s.io/cluster-autoscaler/sandee",
+                    "Value": "true",
+                    "PropagateAtLaunch": true
+                },
+                {
+                    "ResourceId": "eks-m5-large-group-4ac8b7c5-1243-743f-f250-41f4a21dd2c7",
+                    "ResourceType": "auto-scaling-group",
+                    "Key": "kubernetes.io/cluster/sandee",
+                    "Value": "owned",
+                    "PropagateAtLaunch": true
+                }
+            ],
+            "TerminationPolicies": [
+                "AllocationStrategy",
+                "OldestLaunchTemplate",
+                "OldestInstance"
+            ],
+            "NewInstancesProtectedFromScaleIn": false,
+            "ServiceLinkedRoleARN": "arn:aws:iam::838645860193:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+            "CapacityRebalance": true,
+            "TrafficSources": []
+        }
+    ]
+}
