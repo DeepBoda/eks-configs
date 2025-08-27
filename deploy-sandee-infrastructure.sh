@@ -73,18 +73,31 @@ wait_for_pods() {
 }
 
 # Function to check if namespace exists and is active
+# Function to check if namespace exists and is active
 wait_for_namespace() {
     local namespace=$1
     local timeout=${2:-60}
-    
+    local start_time=$(date +%s)
+
     print_status "Waiting for namespace $namespace to be active..."
-    if kubectl wait --for=condition=Active namespace/$namespace --timeout=${timeout}s; then
-        print_success "Namespace $namespace is active"
-    else
-        print_error "Namespace $namespace failed to become active within ${timeout}s"
-        return 1
-    fi
+
+    while true; do
+        phase=$(kubectl get ns $namespace -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+        if [[ "$phase" == "Active" ]]; then
+            print_success "Namespace $namespace is active"
+            return 0
+        fi
+
+        now=$(date +%s)
+        if (( now - start_time > timeout )); then
+            print_error "Namespace $namespace failed to become active within ${timeout}s (phase: $phase)"
+            return 1
+        fi
+
+        sleep 2
+    done
 }
+
 
 # Pre-flight checks
 print_status "Starting Sandee EKS Infrastructure Deployment"
