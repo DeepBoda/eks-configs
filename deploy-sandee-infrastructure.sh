@@ -136,9 +136,13 @@ helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-contro
   --set clusterName="$CLUSTER_NAME" \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller \
+  --set rbac.create=false \
   --set region="$AWS_REGION" \
   --set vpcId="$VPC_ID" \
-  --set image.tag=v2.13.4
+  --set image.tag=v2.13.4 \
+  --atomic \
+  --wait \
+  --timeout 10m
 kubectl rollout status deployment/aws-load-balancer-controller \
   -n aws-load-balancer-controller --timeout=600s
 
