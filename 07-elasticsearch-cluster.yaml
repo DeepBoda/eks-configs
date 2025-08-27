@@ -185,7 +185,7 @@ spec:
       storageClassName: gp3-elasticsearch-fast
       resources:
         requests:
-          storage: 100Gi
+          storage: 50Gi
 ---
 # 6️⃣ Optional PodDisruptionBudget
 apiVersion: policy/v1
