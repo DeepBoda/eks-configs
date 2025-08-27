@@ -134,12 +134,6 @@ VPC_ID=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" 
   --query "cluster.resourcesVpcConfig.vpcId" --output text)
 
 print_status "Deploying AWS Load Balancer Controller via Helm"
-# Pre-clean potential leftover resources that block Helm ownership
-kubectl delete deployment aws-load-balancer-controller -n aws-load-balancer-controller --ignore-not-found
-kubectl delete service aws-load-balancer-webhook-service -n aws-load-balancer-controller --ignore-not-found
-kubectl delete secret aws-load-balancer-webhook-cert -n aws-load-balancer-controller --ignore-not-found
-kubectl delete validatingwebhookconfiguration.admissionregistration.k8s.io aws-load-balancer-webhook --ignore-not-found
-kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io aws-load-balancer-webhook --ignore-not-found
 
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update

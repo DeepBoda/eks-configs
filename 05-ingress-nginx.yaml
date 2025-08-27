@@ -383,7 +383,6 @@ spec:
         - --enable-metrics=true
         - --metrics-per-host=false
         - --enable-ssl-passthrough
-        - --default-ssl-certificate=ingress-nginx/default-ssl-certificate
         env:
         - name: POD_NAME
           valueFrom:
