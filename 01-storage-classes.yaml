@@ -24,6 +24,36 @@ provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
   fsType: ext4
+  iops: "9000"
+  throughput: "325"
+  encrypted: "true"
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-elasticsearch
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  iops: "9000"
+  throughput: "325"
+  encrypted: "true"
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-redis-fast
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
   iops: "12000"
   throughput: "500"
   encrypted: "true"
@@ -34,7 +64,7 @@ allowVolumeExpansion: true
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: gp3-elasticsearch
+  name: gp3-elasticsearch-fast
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3

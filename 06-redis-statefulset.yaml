@@ -324,7 +324,7 @@ spec:
         app: redis
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-redis
+      storageClassName: gp3-redis-fast
       resources:
         requests:
           storage: 20Gi

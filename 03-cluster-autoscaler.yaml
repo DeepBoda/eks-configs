@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       serviceAccountName: cluster-autoscaler
       containers:
-        - image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.32.2
+        - image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.33.0
           name: cluster-autoscaler
           resources:
             limits:
@@ -44,11 +44,12 @@ spec:
             - --v=4
             - --stderrthreshold=info
             - --cloud-provider=aws
-            - --skip-nodes-with-local-storage=false
-            - --expander=least-waste
+            - --cluster-name=sandee
             - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/sandee
-            - --balance-similar-node-groups
+            - --balance-similar-node-groups=true
+            - --skip-nodes-with-local-storage=false
             - --skip-nodes-with-system-pods=false
+            - --expander=least-waste
             - --scale-down-enabled=true
             - --scale-down-delay-after-add=10m
             - --scale-down-unneeded-time=10m
@@ -61,9 +62,6 @@ spec:
             - --max-autoprovisioned-node-group-count=15
             - --max-node-provision-time=15m
             - --scan-interval=10s
-            - --max-nodes-total=100
-            - --balance-similar-node-groups=true
-            - --cluster-name=sandee
           env:
             - name: AWS_REGION
               value: us-east-1

@@ -116,6 +116,12 @@ wait_for_namespace "ingress-nginx"
 wait_for_namespace "aws-load-balancer-controller"
 kubectl apply -f 01-storage-classes.yaml
 kubectl apply -f 02-rbac-irsa.yaml
+
+# Ensure EBS CSI addon is installed (idempotent)
+print_status "Ensuring EBS CSI driver addon is installed"
+aws eks describe-addon --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver >/dev/null 2>&1 \
+  && print_status "EBS CSI addon already installed" \
+  || aws eks create-addon --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver --service-account-role-arn "arn:aws:iam::$AWS_ACCOUNT_ID:role/AmazonEKS_EBS_CSI_DriverRole"
 print_success "Phase 1 complete."
 
 # Phase 2: Infrastructure Components

@@ -342,7 +342,7 @@ spec:
         app: elasticsearch
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-elasticsearch
+      storageClassName: gp3-elasticsearch-fast
       resources:
         requests:
           storage: 50Gi
