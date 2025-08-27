@@ -17,6 +17,14 @@ CLUSTER_NAME="sandee"
 AWS_REGION="us-east-1"
 AWS_ACCOUNT_ID="838645860193"
 
+# Discover VPC ID dynamically for Helm chart values
+print_status "Fetching VPC ID for cluster $CLUSTER_NAME..."
+VPC_ID=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION \
+  --query "cluster.resourcesVpcConfig.vpcId" --output text)
+
+# Ensure Helm is available
+check_command helm
+
 # Function to print colored output
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -163,10 +171,21 @@ print_status "Deploying Cluster Autoscaler..."
 kubectl apply -f 03-cluster-autoscaler.yaml
 wait_for_deployment "cluster-autoscaler" "kube-system"
 
-# 5. Deploy AWS Load Balancer Controller
-print_status "Deploying AWS Load Balancer Controller..."
-kubectl apply -f 04-aws-load-balancer-controller.yaml
-wait_for_deployment "aws-load-balancer-controller" "aws-load-balancer-controller"
+# 5. Deploy AWS Load Balancer Controller via Helm
+print_status "Deploying AWS Load Balancer Controller via Helm..."
+check_command helm
+helm repo add eks https://aws.github.io/eks-charts
+helm repo update
+helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  --namespace aws-load-balancer-controller \
+  --set installCRDs=true \
+  --set clusterName=$CLUSTER_NAME \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=$AWS_REGION \
+  --set vpcId=$VPC_ID \
+  --set image.tag=v2.13.4
+kubectl rollout status deployment/aws-load-balancer-controller -n aws-load-balancer-controller --timeout=600s
 
 # 6. Deploy NGINX Ingress Controller
 print_status "Deploying NGINX Ingress Controller..."
