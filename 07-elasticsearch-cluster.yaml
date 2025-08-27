@@ -1,5 +1,5 @@
 ---
-# DaemonSet to configure vm.max_map_count on all nodes
+# 1️⃣ DaemonSet to set vm.max_map_count on all nodes
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -24,7 +24,7 @@ spec:
       tolerations:
       - operator: "Exists"
 ---
-# ConfigMap for Elasticsearch
+# 2️⃣ ConfigMap for Elasticsearch
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,8 +36,14 @@ data:
     node.name: ${HOSTNAME}
     node.roles: ["master","data","ingest"]
     network.host: 0.0.0.0
-    discovery.seed_hosts: ["elasticsearch-0.elasticsearch.sandee.svc.cluster.local","elasticsearch-1.elasticsearch.sandee.svc.cluster.local","elasticsearch-2.elasticsearch.sandee.svc.cluster.local"]
-    cluster.initial_master_nodes: ["elasticsearch-0","elasticsearch-1","elasticsearch-2"]
+    discovery.seed_hosts:
+      - elasticsearch-0.elasticsearch.sandee.svc.cluster.local
+      - elasticsearch-1.elasticsearch.sandee.svc.cluster.local
+      - elasticsearch-2.elasticsearch.sandee.svc.cluster.local
+    cluster.initial_master_nodes:
+      - elasticsearch-0
+      - elasticsearch-1
+      - elasticsearch-2
     xpack.security.enabled: true
     xpack.security.http.ssl.enabled: false
     xpack.security.transport.ssl.enabled: false
@@ -49,8 +55,8 @@ data:
     cluster.routing.allocation.disk.watermark.low: 80%
     cluster.routing.allocation.disk.watermark.high: 85%
     cluster.routing.allocation.disk.watermark.flood_stage: 90%
-    gateway.recover_after_nodes: 2
-    gateway.expected_nodes: 3
+    gateway.recover_after_data_nodes: 2
+    gateway.expected_data_nodes: 3
     gateway.recover_after_time: 5m
   jvm.options: |
     -Xms4g
@@ -62,7 +68,7 @@ data:
     -XX:HeapDumpPath=/usr/share/elasticsearch/data
     -Xlog:gc*:file=/usr/share/elasticsearch/logs/gc.log:utctime,pid,level
 ---
-# Secret for Elasticsearch password
+# 3️⃣ Secret for Elasticsearch password
 apiVersion: v1
 kind: Secret
 metadata:
@@ -70,9 +76,9 @@ metadata:
   namespace: sandee
 type: Opaque
 data:
-  elastic-password: RWxhc3RpY1N0cm9uZ1Bhc3N3b3JkMTIzIQ==  # ElasticStrongPassword123!
+  elastic-password: RWxhc3RpY1N0cm9uZ1Bhc3N3b3JkMTIzIQ==
 ---
-# Headless service for discovery
+# 4️⃣ Headless Service for discovery
 apiVersion: v1
 kind: Service
 metadata:
@@ -88,21 +94,7 @@ spec:
   selector:
     app: elasticsearch
 ---
-# ClusterIP service for clients
-apiVersion: v1
-kind: Service
-metadata:
-  name: elasticsearch-service
-  namespace: sandee
-spec:
-  type: ClusterIP
-  ports:
-  - port: 9200
-    name: http
-  selector:
-    app: elasticsearch
----
-# Elasticsearch StatefulSet
+# 5️⃣ StatefulSet for Elasticsearch 8.15.3
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -138,7 +130,7 @@ spec:
             memory: "4Gi"
           limits:
             cpu: "2"
-            memory: "8Gi"
+            memory: "6Gi"
         env:
         - name: ELASTIC_PASSWORD
           valueFrom:
@@ -195,7 +187,7 @@ spec:
         requests:
           storage: 100Gi
 ---
-# PodDisruptionBudget
+# 6️⃣ Optional PodDisruptionBudget
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
