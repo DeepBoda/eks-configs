@@ -226,21 +226,6 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-      - name: init-redis
-        image: redis/redis-stack-server:7.2.0-v18
-        command:
-        - sh
-        - -c
-        - |
-          chown -R 999:999 /data
-          chmod 755 /data
-        volumeMounts:
-        - name: redis-data
-          mountPath: /data
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
       containers:
       - name: redis
         image: redis/redis-stack-server:7.2.0-v18
