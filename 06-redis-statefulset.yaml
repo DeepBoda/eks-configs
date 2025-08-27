@@ -228,7 +228,7 @@ spec:
           type: RuntimeDefault
       initContainers:
       - name: init-redis
-        image: redis/redis-stack-server:7.2.0-v9
+        image: redis/redis-stack-server:7.2.0-v18
         command:
         - sh
         - -c
@@ -243,7 +243,7 @@ spec:
           runAsGroup: 0
       containers:
       - name: redis
-        image: redis/redis-stack-server:7.2.0-v9
+        image: redis/redis-stack-server:7.2.0-v18
         ports:
         - containerPort: 6379
           name: redis

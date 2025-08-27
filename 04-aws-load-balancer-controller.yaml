@@ -53,7 +53,7 @@ spec:
           value: us-east-1
         - name: AWS_STS_REGIONAL_ENDPOINTS
           value: regional
-        image: public.ecr.aws/eks/aws-load-balancer-controller:v2.7.2
+        image: public.ecr.aws/eks/aws-load-balancer-controller:v2.13.4
         livenessProbe:
           failureThreshold: 2
           httpGet:
