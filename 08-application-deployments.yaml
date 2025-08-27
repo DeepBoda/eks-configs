@@ -212,25 +212,6 @@ spec:
             secretKeyRef:
               name: redis-secret
               key: redis-password
-        - name: POSTGRES_HOST
-          value: "postgres"
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-user
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-password
-        - name: POSTGRES_DB
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-db
         - name: ELASTICSEARCH_HOST
           value: "elasticsearch-service"
         - name: ELASTICSEARCH_PORT
@@ -451,25 +432,6 @@ spec:
             secretKeyRef:
               name: redis-secret
               key: redis-password
-        - name: POSTGRES_HOST
-          value: "postgres"
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-user
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-password
-        - name: POSTGRES_DB
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-db
         - name: NODE_ENV
           value: "production"
         - name: PORT

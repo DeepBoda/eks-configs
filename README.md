@@ -8,7 +8,7 @@ This directory contains a complete, production-ready Kubernetes infrastructure f
 
 - **EKS Cluster**: Production-ready cluster with autoscaling and security hardening
 - **Application Stack**: Frontend (Next.js), Backend (Node.js), Admin Panel, Cron Jobs
-- **Database Layer**: PostgreSQL, Redis Cluster, Elasticsearch Cluster
+- **Database Layer**: Redis Cluster, Elasticsearch Cluster
 - **Networking**: Dual ingress strategy (ALB + NGINX) with HTTP/2 and TLS
 - **Storage**: GP3 optimized storage classes with performance tuning
 - **Scaling**: HPA with CPU/memory metrics + Cluster Autoscaler
@@ -17,7 +17,6 @@ This directory contains a complete, production-ready Kubernetes infrastructure f
 ## 📁 File Structure
 
 ```
-consolidated-infrastructure/
 ├── 00-namespaces.yaml                    # Namespace definitions
 ├── 01-storage-classes.yaml               # GP3 optimized storage classes
 ├── 02-rbac-irsa.yaml                     # RBAC and IRSA configurations
@@ -137,7 +136,6 @@ All sensitive data is stored in Kubernetes secrets:
 
 - `redis-secret`: Redis authentication
 - `elasticsearch-secret`: Elasticsearch authentication
-- `postgres-secret`: PostgreSQL credentials
 
 ### Network Security
 

@@ -59,21 +59,6 @@ spec:
     matchLabels:
       app: sandee-cron
 ---
-# PostgreSQL PodDisruptionBudget
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: postgres-pdb
-  namespace: sandee
-  labels:
-    app: postgres
-    component: availability
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: postgres
----
 # NGINX Ingress Controller PodDisruptionBudget
 apiVersion: policy/v1
 kind: PodDisruptionBudget
