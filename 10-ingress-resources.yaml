@@ -1,0 +1,260 @@
+---
+# ALB Ingress for Frontend (Main Domain)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sandee-frontend-alb
+  namespace: sandee
+  labels:
+    app: sandee-frontend
+    component: ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:838645860193:certificate/19f0eb97-784f-4d85-bd1b-c6efabb9d8fa
+    alb.ingress.kubernetes.io/healthcheck-path: "/"
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60,routing.http2.enabled=true,access_logs.s3.enabled=false
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=30,stickiness.enabled=false
+    alb.ingress.kubernetes.io/security-groups: sg-0123456789abcdef0
+    alb.ingress.kubernetes.io/subnets: subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2
+spec:
+  ingressClassName: alb
+  rules:
+  - host: sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-frontend
+            port:
+              number: 3000
+  - host: eks.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-frontend
+            port:
+              number: 3000
+---
+# NGINX Ingress for Internal Services
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sandee-internal-nginx
+  namespace: sandee
+  labels:
+    app: sandee
+    component: ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "10g"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+      }
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - admin.sandee.com
+    - eks-admin.sandee.com
+    - backend-v2.sandee.com
+    - eks-backend.sandee.com
+    - eks-redis.sandee.com
+    - eks-elasticsearch.sandee.com
+    secretName: sandee-tls-secret
+  rules:
+  - host: admin.sandee.com
+    http:
+      paths:
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: sandee-admin
+            port:
+              number: 3000
+  - host: eks-admin.sandee.com
+    http:
+      paths:
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: sandee-admin
+            port:
+              number: 3000
+  - host: backend-v2.sandee.com
+    http:
+      paths:
+      - path: /(api|health|ready)(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: sandee-backend
+            port:
+              number: 8008
+  - host: eks-backend.sandee.com
+    http:
+      paths:
+      - path: /(api|health|ready)(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: sandee-backend
+            port:
+              number: 8008
+  - host: eks-redis.sandee.com
+    http:
+      paths:
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: redis-service
+            port:
+              number: 6379
+  - host: eks-elasticsearch.sandee.com
+    http:
+      paths:
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: elasticsearch-service
+            port:
+              number: 9200
+---
+# Rate Limiting Ingress for API endpoints
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sandee-api-rate-limited
+  namespace: sandee
+  labels:
+    app: sandee-backend
+    component: api-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/rate-limit-connections: "10"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-rpm: "1000"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      limit_req zone=api burst=20 nodelay;
+      limit_conn addr 10;
+      
+      # Security headers
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      more_set_headers "Content-Security-Policy: default-src 'self'";
+      
+      # CORS headers for API
+      if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' '$http_origin' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Max-Age' 1728000 always;
+        add_header 'Content-Type' 'text/plain; charset=utf-8' always;
+        add_header 'Content-Length' 0 always;
+        return 204;
+      }
+      
+      add_header 'Access-Control-Allow-Origin' '$http_origin' always;
+      add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+      add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+      add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.sandee.com
+    - api-v2.sandee.com
+    secretName: sandee-api-tls-secret
+  rules:
+  - host: api.sandee.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-backend
+            port:
+              number: 8008
+  - host: api-v2.sandee.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-backend
+            port:
+              number: 8008
+---
+# Redirect Ingress for www to non-www
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sandee-redirect
+  namespace: sandee
+  labels:
+    app: sandee
+    component: redirect
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/permanent-redirect: https://sandee.com$request_uri
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - www.sandee.com
+    secretName: sandee-www-tls-secret
+  rules:
+  - host: www.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-frontend
+            port:
+              number: 3000

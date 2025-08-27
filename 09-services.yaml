@@ -1,0 +1,76 @@
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-frontend
+  namespace: sandee
+  labels:
+    app: sandee-frontend
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+    protocol: TCP
+  selector:
+    app: sandee-frontend
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-backend
+  namespace: sandee
+  labels:
+    app: sandee-backend
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8008
+    targetPort: 8008
+    name: http
+    protocol: TCP
+  selector:
+    app: sandee-backend
+---
+# Admin Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-admin
+  namespace: sandee
+  labels:
+    app: sandee-admin
+    component: admin
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+    protocol: TCP
+  selector:
+    app: sandee-admin
+---
+# Cron Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-cron
+  namespace: sandee
+  labels:
+    app: sandee-cron
+    component: cron
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5001
+    targetPort: 5001
+    name: http
+    protocol: TCP
+  selector:
+    app: sandee-cron

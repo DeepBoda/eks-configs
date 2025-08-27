@@ -1,0 +1,123 @@
+---
+# Frontend PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-frontend-pdb
+  namespace: sandee
+  labels:
+    app: sandee-frontend
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sandee-frontend
+---
+# Backend PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-backend-pdb
+  namespace: sandee
+  labels:
+    app: sandee-backend
+    component: availability
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: sandee-backend
+---
+# Admin PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-admin-pdb
+  namespace: sandee
+  labels:
+    app: sandee-admin
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sandee-admin
+---
+# Cron PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-cron-pdb
+  namespace: sandee
+  labels:
+    app: sandee-cron
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sandee-cron
+---
+# PostgreSQL PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: sandee
+  labels:
+    app: postgres
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres
+---
+# NGINX Ingress Controller PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ingress-nginx-controller-pdb
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    component: availability
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: ingress-nginx
+      app.kubernetes.io/name: ingress-nginx
+---
+# AWS Load Balancer Controller PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: aws-load-balancer-controller-pdb
+  namespace: aws-load-balancer-controller
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/name: aws-load-balancer-controller
+---
+# Cluster Autoscaler PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cluster-autoscaler-pdb
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: cluster-autoscaler
