@@ -137,6 +137,7 @@ print_status "Deploying AWS Load Balancer Controller via Helm"
 
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
+kubectl delete ingressclass nginx --ignore-not-found
 kubectl delete serviceaccount ingress-nginx -n ingress-nginx --ignore-not-found
 helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --namespace aws-load-balancer-controller \
@@ -157,9 +158,13 @@ kubectl rollout status deployment/aws-load-balancer-controller \
 
 print_status "Deploying ingress-nginx controller via Helm"
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-kubectl delete serviceaccount ingress-nginx -n ingress-nginx --ignore-not-found
-kubectl delete configmap ingress-nginx-controller -n ingress-nginx --ignore-not-found
+print_status "Resetting ingress-nginx namespace for clean install"
+kubectl delete namespace ingress-nginx --ignore-not-found
+kubectl create namespace ingress-nginx
 helm repo update
+kubectl delete service ingress-nginx-controller-admission -n ingress-nginx --ignore-not-found
+kubectl delete ValidatingWebhookConfiguration ingress-nginx-admission --ignore-not-found
+kubectl delete MutatingWebhookConfiguration ingress-nginx-admission --ignore-not-found
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
