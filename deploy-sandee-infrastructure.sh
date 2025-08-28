@@ -51,8 +51,6 @@ wait_for_pods() {
 }
 
 # --- Main Execution ---
-print_status "Temporarily removing Kueue webhook to prevent installation conflicts..."
-
 print_status "Starting Sandee EKS Infrastructure Deployment"
 print_status "=========================================="
 
@@ -94,6 +92,7 @@ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx &> /dev/n
 helm repo update &> /dev/null
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   -n ingress-nginx --create-namespace \
+  --set controller.admissionWebhooks.enabled=false \
   --set controller.metrics.enabled=true \
   --set controller.config.proxy-body-size="10g" \
   --set controller.config.proxy-connect-timeout="600" \
@@ -102,8 +101,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.config.use-regex="true" \
   --set controller.config.ssl-redirect="false" \
   --set controller.config.server-tokens="false" \
-  --timeout 10m
-wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
+  --wait --timeout 10m
 print_success "ingress-nginx controller deployed."
 
 print_status "Installing metrics-server..."
