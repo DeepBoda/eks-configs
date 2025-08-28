@@ -1,16 +1,17 @@
+# ALB Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: sandee-ingress
   namespace: sandee
   annotations:
-    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:123456789012:certificate/abc-def-ghi
     alb.ingress.kubernetes.io/ssl-redirect: "443"
 spec:
+  ingressClassName: alb
   rules:
     - host: eks.sandee.com
       http:
@@ -22,43 +23,43 @@ spec:
                 name: sandee-frontend
                 port:
                   number: 80
-    # - host: eks-backend.sandee.com
-    #   http:
-    #     paths:
-    #       - path: /
-    #         pathType: Prefix
-    #         backend:
-    #           service:
-    #             name: sandee-backend
-    #             port:
-    #               number: 80
-    # - host: eks-admin.sandee.com
-    #   http:
-    #     paths:
-    #       - path: /
-    #         pathType: Prefix
-    #         backend:
-    #           service:
-    #             name: sandee-admin
-    #             port:
-    #               number: 80
-    # - host: eks-elasticsearch.sandee.com
-    #   http:
-    #     paths:
-    #       - path: /
-    #         pathType: Prefix
-    #         backend:
-    #           service:
-    #             name: sandee-elasticsearch
-    #             port:
-    #               number: 80
-    # - host: eks-redis.sandee.com
-    #   http:
-    #     paths:
-    #       - path: /
-    #         pathType: Prefix
-    #         backend:
-    #           service:
-    #             name: sandee-redis
-    #             port:
-    #               number: 6379
+    - host: eks-backend.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-backend
+                port:
+                  number: 8008
+    - host: eks-admin.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-admin
+                port:
+                  number: 3000
+    - host: eks-elasticsearch.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-elasticsearch
+                port:
+                  number: 80
+    - host: eks-redis.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-redis
+                port:
+                  number: 6379

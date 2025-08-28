@@ -1,4 +1,3 @@
----
 # Frontend Service
 apiVersion: v1
 kind: Service
@@ -7,16 +6,16 @@ metadata:
   namespace: sandee
   labels:
     app: sandee-frontend
-    component: frontend
 spec:
   type: ClusterIP
   ports:
-  - port: 80        # frontend exposed to ALB
-    targetPort: 3000
-    name: http
-    protocol: TCP
+    - port: 80
+      targetPort: 3000
+      name: http
+      protocol: TCP
   selector:
     app: sandee-frontend
+
 ---
 # Backend Service
 apiVersion: v1
@@ -26,16 +25,16 @@ metadata:
   namespace: sandee
   labels:
     app: sandee-backend
-    component: backend
 spec:
   type: ClusterIP
   ports:
-  - port: 8008
-    targetPort: 8008
-    name: http
-    protocol: TCP
+    - port: 8008
+      targetPort: 8008
+      name: http
+      protocol: TCP
   selector:
     app: sandee-backend
+
 ---
 # Admin Service
 apiVersion: v1
@@ -45,32 +44,46 @@ metadata:
   namespace: sandee
   labels:
     app: sandee-admin
-    component: admin
 spec:
   type: ClusterIP
   ports:
-  - port: 3000
-    targetPort: 3000
-    name: http
-    protocol: TCP
+    - port: 3000
+      targetPort: 3000
+      name: http
+      protocol: TCP
   selector:
     app: sandee-admin
+
 ---
-# # Cron Service
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: sandee-cron
-#   namespace: sandee
-#   labels:
-#     app: sandee-cron
-#     component: cron
-# spec:
-#   type: ClusterIP
-#   ports:
-#   - port: 5001
-#     targetPort: 5001
-#     name: http
-#     protocol: TCP
-#   selector:
-#     app: sandee-cron
+# Elasticsearch Service (optional external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-elasticsearch
+  namespace: sandee
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 9200
+      name: http
+      protocol: TCP
+  selector:
+    app: elasticsearch
+
+---
+# Redis Service (optional external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-redis
+  namespace: sandee
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+      protocol: TCP
+  selector:
+    app: redis
