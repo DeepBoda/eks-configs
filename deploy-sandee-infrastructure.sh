@@ -112,7 +112,6 @@ print_success "Pre-flight checks passed."
 print_status "Phase 1: Core Infrastructure"
 kubectl apply -f 00-namespaces.yaml
 wait_for_namespace "sandee"
-wait_for_namespace "ingress-nginx"
 wait_for_namespace "aws-load-balancer-controller"
 kubectl apply -f 01-storage-classes.yaml
 kubectl apply -f 02-rbac-irsa.yaml

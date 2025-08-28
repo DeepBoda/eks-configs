@@ -11,14 +11,6 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ingress-nginx
-  labels:
-    app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/name: ingress-nginx
----
-apiVersion: v1
-kind: Namespace
-metadata:
   name: aws-load-balancer-controller
   labels:
     app.kubernetes.io/name: aws-load-balancer-controller
