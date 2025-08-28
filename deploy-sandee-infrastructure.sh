@@ -127,7 +127,7 @@ print_success "Phase 1 complete."
 # Phase 2: Infrastructure Components
 print_status "Phase 2: Infrastructure Components"
 kubectl apply -f 03-cluster-autoscaler.yaml
-wait_for_deployment "cluster-autoscaler" "kube-system"
+wait_for_deployment "cluster-autoscaler" "kube-system" 900
 
 # Dynamic values
 VPC_ID=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
