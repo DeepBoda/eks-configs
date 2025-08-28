@@ -102,7 +102,8 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.config.use-regex="true" \
   --set controller.config.ssl-redirect="false" \
   --set controller.config.server-tokens="false" \
-  --wait --timeout 10m
+  --timeout 10m
+wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
 print_success "ingress-nginx controller deployed."
 
 print_status "Installing metrics-server..."
