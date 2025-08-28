@@ -94,6 +94,9 @@ kind: ClusterRole
 metadata:
   name: aws-load-balancer-controller
 rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["", "extensions"]
     resources: ["configmaps", "endpoints", "events", "ingresses", "ingresses/status", "services", "pods/status"]
     verbs: ["create", "get", "list", "update", "watch", "patch"]
