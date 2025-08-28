@@ -46,9 +46,6 @@ data:
     repl-backlog-size 1mb
     repl-backlog-ttl 3600
     
-    # Security
-    requirepass ${REDIS_PASSWORD}
-    
     # Memory Management
     maxmemory 4gb
     maxmemory-policy allkeys-lru
@@ -233,12 +230,6 @@ spec:
         - containerPort: 6379
           name: redis
           protocol: TCP
-        env:
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: redis-password
         command:
         - redis-server
         - /usr/local/etc/redis/redis.conf
@@ -269,7 +260,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli -a $REDIS_PASSWORD ping
+            - redis-cli ping
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
@@ -279,7 +270,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli -a $REDIS_PASSWORD ping
+            - redis-cli ping
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3
@@ -289,7 +280,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli -a $REDIS_PASSWORD ping
+            - redis-cli ping
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
