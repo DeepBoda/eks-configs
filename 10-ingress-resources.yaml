@@ -1,115 +1,64 @@
-# ALB Ingress for Frontend (Main Domain)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: sandee-frontend-alb
+  name: sandee-ingress
   namespace: sandee
-  labels:
-    app: sandee-frontend
-    component: ingress
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:123456789012:certificate/abc-def-ghi
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:838645860193:certificate/19f0eb97-784f-4d85-bd1b-c6efabb9d8fa
-    alb.ingress.kubernetes.io/healthcheck-path: "/"
-    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
-    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
-    alb.ingress.kubernetes.io/success-codes: "200"
-    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
-    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
-    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60,routing.http2.enabled=true,access_logs.s3.enabled=false
-    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=30,stickiness.enabled=false
-    alb.ingress.kubernetes.io/security-groups: sg-05593ac79b5340d5a
-    alb.ingress.kubernetes.io/subnets: subnet-0e301977f3a152c65,subnet-0a33e8f73f6ab0b8a
 spec:
-  ingressClassName: alb
   rules:
-  # - host: sandee.com
-  #   http:
-  #     paths:
-  #     - path: /
-  #       pathType: Prefix
-  #       backend:
-  #         service:
-  #           name: sandee-frontend
-  #           port:
-  #             number: 3000
-  - host: eks.sandee.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: sandee-frontend
-            port:
-              number: 3000
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: sandee-internal-nginx
-  namespace: sandee
-  labels:
-    app: sandee
-    component: ingress
-  annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/proxy-body-size: "10g"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/hsts: "true"
-    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
-    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: eks-admin.sandee.com
-    http:
-      paths:
-      - path: /()(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: sandee-admin
-            port:
-              number: 3000
-  - host: eks-backend.sandee.com
-    http:
-      paths:
-      - path: /(api|health|ready)(/|$)(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: sandee-backend
-            port:
-              number: 8008
-  - host: eks-redis.sandee.com
-    http:
-      paths:
-      - path: /()(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: redis-service
-            port:
-              number: 6379
-  - host: eks-elasticsearch.sandee.com
-    http:
-      paths:
-      - path: /()(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: elasticsearch
-            port:
-              number: 9200
+    - host: eks.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-frontend
+                port:
+                  number: 80
+    - host: eks-backend.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-backend
+                port:
+                  number: 80
+    - host: eks-admin.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-admin
+                port:
+                  number: 80
+    - host: eks-elasticsearch.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-elasticsearch
+                port:
+                  number: 80
+    - host: eks-redis.sandee.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sandee-redis
+                port:
+                  number: 6379
