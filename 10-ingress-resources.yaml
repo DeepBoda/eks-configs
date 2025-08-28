@@ -23,7 +23,7 @@ metadata:
     alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60,routing.http2.enabled=true,access_logs.s3.enabled=false
     alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=30,stickiness.enabled=false
     alb.ingress.kubernetes.io/security-groups: sg-0123456789abcdef0
-    alb.ingress.kubernetes.io/subnets: subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2
+    alb.ingress.kubernetes.io/subnets: subnet-0e301977f3a152c65,subnet-0a33e8f73f6ab0b8a
 spec:
   ingressClassName: alb
   rules:
