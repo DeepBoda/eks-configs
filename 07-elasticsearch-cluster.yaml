@@ -24,7 +24,7 @@ spec:
       tolerations:
       - operator: "Exists"
 ---
-# 2️⃣ ConfigMap for Elasticsearch
+# 2️⃣ ConfigMap for Elasticsearch settings
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -47,17 +47,6 @@ data:
     xpack.security.enabled: true
     xpack.security.http.ssl.enabled: false
     xpack.security.transport.ssl.enabled: false
-    thread_pool.write.queue_size: 2000
-    thread_pool.search.queue_size: 2000
-    indices.memory.index_buffer_size: 25%
-    indices.queries.cache.size: 20%
-    indices.fielddata.cache.size: 30%
-    cluster.routing.allocation.disk.watermark.low: 80%
-    cluster.routing.allocation.disk.watermark.high: 85%
-    cluster.routing.allocation.disk.watermark.flood_stage: 90%
-    gateway.recover_after_data_nodes: 2
-    gateway.expected_data_nodes: 3
-    gateway.recover_after_time: 5m
   jvm.options: |
     -Xms4g
     -Xmx4g
@@ -68,7 +57,7 @@ data:
     -XX:HeapDumpPath=/usr/share/elasticsearch/data
     -Xlog:gc*:file=/usr/share/elasticsearch/logs/gc.log:utctime,pid,level
 ---
-# 3️⃣ Secret for Elasticsearch password
+# 3️⃣ Secret for Elasticsearch credentials
 apiVersion: v1
 kind: Secret
 metadata:
@@ -76,9 +65,9 @@ metadata:
   namespace: sandee
 type: Opaque
 data:
-  elastic-password: RWxhc3RpY1N0cm9uZ1Bhc3N3b3JkMTIzIQ==
+  elastic-password: RWxhc3RpY1N0cm9uZ1Bhc3N3b3JkMTIzIQ==   # "ElasticStrongPassword123!"
 ---
-# 4️⃣ Headless Service for discovery
+# 4️⃣ Headless Service (for discovery) + NodePort (for external access)
 apiVersion: v1
 kind: Service
 metadata:
@@ -87,14 +76,31 @@ metadata:
 spec:
   clusterIP: None
   ports:
-  - port: 9200
-    name: http
-  - port: 9300
-    name: transport
+  - name: http
+    port: 9200
+    targetPort: 9200
+  - name: transport
+    port: 9300
+    targetPort: 9300
   selector:
     app: elasticsearch
 ---
-# 5️⃣ StatefulSet for Elasticsearch 8.15.3
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-nodeport
+  namespace: sandee
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+    nodePort: 30005
+  selector:
+    app: elasticsearch
+---
+# 5️⃣ StatefulSet for Elasticsearch (3 nodes, production-ready)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -145,7 +151,7 @@ spec:
         - containerPort: 9300
           name: transport
         volumeMounts:
-        - name: elasticsearch-data
+        - name: es-data
           mountPath: /usr/share/elasticsearch/data
         - name: elasticsearch-config
           mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
@@ -179,7 +185,7 @@ spec:
           name: elasticsearch-config
   volumeClaimTemplates:
   - metadata:
-      name: elasticsearch-data
+      name: es-data
     spec:
       accessModes: ["ReadWriteOnce"]
       storageClassName: gp3-elasticsearch-fast
@@ -187,7 +193,7 @@ spec:
         requests:
           storage: 50Gi
 ---
-# 6️⃣ Optional PodDisruptionBudget
+# 6️⃣ PodDisruptionBudget
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
