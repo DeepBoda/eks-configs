@@ -113,14 +113,15 @@ rules:
     resources: ["ingresses/status"]
     verbs: ["update"]
   - apiGroups: ["elbv2.k8s.aws"]
-    resources: ["targetgroupbindings"]
-    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+    resources: ["targetgroupbindings", "ingressclassparams"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingressclasses"]
     verbs: ["get", "list", "watch"]
+
 ---
 # AWS Load Balancer Controller ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
