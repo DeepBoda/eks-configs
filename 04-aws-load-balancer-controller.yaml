@@ -29,7 +29,7 @@ spec:
         - --aws-region=us-east-1
         env:
         - name: AWS_VPC_ID
-          value: ""
+          value: "vpc-02f40ee7a414a4512"
         resources:
           requests:
             cpu: 100m
