@@ -158,26 +158,39 @@ kubectl rollout status deployment/aws-load-balancer-controller \
 
 print_status "Deploying ingress-nginx controller via Helm"
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-print_status "Resetting ingress-nginx namespace for clean install"
-kubectl delete namespace ingress-nginx --ignore-not-found
-kubectl create namespace ingress-nginx
 helm repo update
-kubectl delete service ingress-nginx-controller-admission -n ingress-nginx --ignore-not-found
+
+print_status "Resetting ingress-nginx resources for clean install"
+# Delete namespace-scoped resources first
+kubectl delete all --all -n ingress-nginx --ignore-not-found
+# Delete cluster-scoped resources that might be left over
+kubectl delete clusterrole ingress-nginx ingress-nginx-admission --ignore-not-found
+kubectl delete clusterrolebinding ingress-nginx ingress-nginx-admission --ignore-not-found
+kubectl delete ingressclass nginx --ignore-not-found
 kubectl delete ValidatingWebhookConfiguration ingress-nginx-admission --ignore-not-found
 kubectl delete MutatingWebhookConfiguration ingress-nginx-admission --ignore-not-found
+print_status "Waiting for resources to be deleted..."
+sleep 15 # Give some time for resources to terminate
+
+print_status "Installing/Upgrading ingress-nginx via Helm"
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --set controller.metrics.enabled=true \
+  --set controller.config.proxy-body-size="10g" \
+  --set controller.config.proxy-connect-timeout="600" \
+  --set controller.config.proxy-send-timeout="600" \
+  --set controller.config.proxy-read-timeout="600" \
+  --set controller.config.proxy-buffering="off" \
+  --set controller.config.use-regex="true" \
+  --set controller.config.ssl-redirect="false" \
+  --set controller.config.force-ssl-redirect="false" \
+  --set controller.config.server-tokens="false" \
   --wait \
   --timeout 10m \
   --force
 wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
 print_success "ingress-nginx controller installed"
-
-
-kubectl apply -f 05-ingress-nginx.yaml
-wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
 
 print_status "Installing metrics-server"
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
