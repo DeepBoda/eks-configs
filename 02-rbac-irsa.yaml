@@ -8,7 +8,7 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::838645860193:role/AmazonEKS_EBS_CSI_DriverRole
 ---
-# AWS Load Balancer Controller Service Account with IRSA
+# AWS Load Balancer Controller Service Account
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -17,7 +17,7 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::838645860193:role/AmazonEKSLoadBalancerControllerRole
 ---
-# Cluster Autoscaler Service Account with IRSA
+# Cluster Autoscaler Service Account
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -106,7 +106,6 @@ rules:
   - apiGroups: ["elbv2.k8s.aws"]
     resources: ["*"]
     verbs: ["*"]
-
 ---
 # AWS Load Balancer Controller ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

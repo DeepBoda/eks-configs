@@ -51,6 +51,9 @@ wait_for_pods() {
 }
 
 # --- Main Execution ---
+print_status "Temporarily removing Kueue webhook to prevent installation conflicts..."
+kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io kueue-mutating-webhook-config --ignore-not-found
+
 print_status "Starting Sandee EKS Infrastructure Deployment"
 print_status "=========================================="
 
