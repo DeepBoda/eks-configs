@@ -59,7 +59,6 @@ spec:
             - --max-nodes-total=100
             - --cores-total=0:320
             - --memory-total=0:1280
-            - --max-autoprovisioned-node-group-count=15
             - --max-node-provision-time=15m
             - --scan-interval=10s
           env:
@@ -67,6 +66,8 @@ spec:
               value: us-east-1
             - name: AWS_STS_REGIONAL_ENDPOINTS
               value: regional
+            - name: AWS_ROLE_ARN
+              value: arn:aws:iam::838645860193:role/AmazonEKSClusterAutoscalerRole
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
