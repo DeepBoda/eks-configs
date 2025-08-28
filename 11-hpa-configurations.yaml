@@ -91,13 +91,13 @@ spec:
         periodSeconds: 60
       selectPolicy: Min
     scaleUp:
-      stabilizationWindowSeconds: 30
+      stabilizationWindowSeconds: 60
       policies:
       - type: Percent
-        value: 100
+        value: 75
         periodSeconds: 30
       - type: Pods
-        value: 3
+        value: 2
         periodSeconds: 30
       selectPolicy: Max
 ---

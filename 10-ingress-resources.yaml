@@ -43,23 +43,4 @@ spec:
                 name: sandee-admin
                 port:
                   number: 3000
-    - host: eks-elasticsearch.sandee.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: elasticsearch
-                port:
-                  number: 80
-    - host: eks-redis.sandee.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: redis
-                port:
-                  number: 6379
+

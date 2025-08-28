@@ -57,9 +57,12 @@ spec:
         - name: discovery.type
           value: single-node
         - name: xpack.security.enabled
-          value: "false"
+          value: "true"
         - name: ELASTIC_PASSWORD
-          value: "elastic123"
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-secret
+              key: elastic-password
         - name: ES_JAVA_OPTS
           value: "-Xms4g -Xmx4g"
         volumeMounts:
@@ -124,7 +127,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: gp3-elasticsearch-fast
+  storageClassName: gp3-elasticsearch
   resources:
     requests:
       storage: 50Gi

@@ -9,7 +9,7 @@ metadata:
     app: sandee-frontend
     component: availability
 spec:
-  minAvailable: 1
+  maxUnavailable: 50%
   selector:
     matchLabels:
       app: sandee-frontend
@@ -24,7 +24,7 @@ metadata:
     app: sandee-backend
     component: availability
 spec:
-  minAvailable: 2
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: sandee-backend
@@ -39,7 +39,7 @@ metadata:
     app: sandee-admin
     component: availability
 spec:
-  minAvailable: 1
+  maxUnavailable: 50%
   selector:
     matchLabels:
       app: sandee-admin

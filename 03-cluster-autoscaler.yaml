@@ -22,7 +22,7 @@ spec:
       serviceAccountName: cluster-autoscaler   # <- must be annotated with IAM Role
       containers:
         - name: cluster-autoscaler
-          image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.33.0
+          image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.30.1
           resources:
             limits:
               cpu: 100m
@@ -51,7 +51,7 @@ spec:
             - --cores-total=0:320
             - --memory-total=0:1280
             - --max-node-provision-time=15m
-            - --scan-interval=10s
+            - --scan-interval=30s
           ports:
             - containerPort: 8085
               name: metrics
@@ -78,7 +78,6 @@ spec:
         kubernetes.io/os: linux
         kubernetes.io/arch: amd64
       tolerations:
-        - key: node-role.kubernetes.io/master
-          effect: NoSchedule
+
         - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule

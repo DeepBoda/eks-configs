@@ -213,7 +213,7 @@ spec:
               name: redis-secret
               key: redis-password
         - name: ELASTICSEARCH_HOST
-          value: "elasticsearch-service"
+          value: "elasticsearch"
         - name: ELASTICSEARCH_PORT
           value: "9200"
         - name: ELASTICSEARCH_PASSWORD
@@ -292,7 +292,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 50%
-      maxUnavailable: 50%
+      maxUnavailable: 25%
   template:
     metadata:
       labels:
@@ -369,6 +369,14 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
         volumeMounts:
         - name: tmp
           mountPath: /tmp

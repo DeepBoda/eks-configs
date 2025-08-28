@@ -47,7 +47,7 @@ data:
     repl-backlog-ttl 3600
     
     # Memory Management
-    maxmemory 4gb
+    maxmemory 4.8gb
     maxmemory-policy allkeys-lru
     lazyfree-lazy-eviction yes
     lazyfree-lazy-expire yes
@@ -300,7 +300,7 @@ spec:
         app: redis
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-redis-fast
+      storageClassName: gp3-redis
       resources:
         requests:
           storage: 20Gi

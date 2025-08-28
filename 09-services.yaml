@@ -54,42 +54,4 @@ spec:
   selector:
     app: sandee-admin
 
----
-# Elasticsearch Service (optional external access)
-apiVersion: v1
-kind: Service
-metadata:
-  name: elasticsearch
-  namespace: sandee
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
-spec:
-  type: LoadBalancer
-  ports:
-    - port: 80
-      targetPort: 9200
-      name: http
-      protocol: TCP
-  selector:
-    app: elasticsearch
 
----
-# Redis Service (optional external access)
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis
-  namespace: sandee
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
-spec:
-  type: LoadBalancer
-  ports:
-    - port: 6379
-      targetPort: 6379
-      name: redis
-      protocol: TCP
-  selector:
-    app: redis

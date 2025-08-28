@@ -56,7 +56,7 @@ print_status "=========================================="
 
 # 1. Pre-flight Checks
 print_status "Phase 1: Pre-flight Checks"
-for cmd in kubectl aws helm; do check_command "$cmd"; done
+for cmd in kubectl aws; do check_command "$cmd"; done
 print_status "Verifying kubectl connectivity..."
 kubectl cluster-info &> /dev/null || print_error "kubectl cannot connect to the cluster."
 print_status "Verifying EKS cluster '$CLUSTER_NAME' exists..."
@@ -64,7 +64,13 @@ aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" &> /dev/n
 print_success "Pre-flight checks passed."
 
 # 2. Core Infrastructure Setup
-print_status "Phase 2: Core Infrastructure (Namespaces, Storage, RBAC)"
+print_status "Phase 2: Core Infrastructure (VPC CNI, Namespaces, Storage, RBAC)"
+print_status "Ensuring VPC CNI addon is installed..."
+aws eks create-addon --cluster-name "$CLUSTER_NAME" --addon-name vpc-cni --resolve-conflicts PRESERVE
+print_status "Waiting for VPC CNI addon to become active..."
+aws eks wait addon-active --cluster-name "$CLUSTER_NAME" --addon-name vpc-cni
+print_success "VPC CNI addon is active."
+
 kubectl apply -f 00-namespaces.yaml
 kubectl apply -f 01-storage-classes.yaml
 kubectl apply -f 02-rbac-irsa.yaml
@@ -75,34 +81,11 @@ print_status "Phase 3: Infrastructure Components"
 kubectl apply -f 03-cluster-autoscaler.yaml
 wait_for_deployment "cluster-autoscaler" "kube-system"
 
-VPC_ID=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" --query "cluster.resourcesVpcConfig.vpcId" --output text)
-print_status "Deploying AWS Load Balancer Controller for VPC '$VPC_ID'..."
-helm repo add eks https://aws.github.io/eks-charts &> /dev/null
-helm repo update &> /dev/null
-helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n aws-load-balancer-controller --create-namespace \
-  --set clusterName="$CLUSTER_NAME" \
-  --set serviceAccount.create=false \
-  --set serviceAccount.name=aws-load-balancer-controller \
-  --wait --timeout 10m
-print_success "AWS Load Balancer Controller deployed."
+kubectl apply -f 04-aws-load-balancer-controller.yaml
+wait_for_deployment "aws-load-balancer-controller" "aws-load-balancer-controller"
 
-print_status "Deploying ingress-nginx controller..."
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx &> /dev/null
-helm repo update &> /dev/null
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace \
-  --set controller.admissionWebhooks.enabled=false \
-  --set controller.metrics.enabled=true \
-  --set controller.config.proxy-body-size="10g" \
-  --set controller.config.proxy-connect-timeout="600" \
-  --set controller.config.proxy-send-timeout="600" \
-  --set controller.config.proxy-read-timeout="600" \
-  --set controller.config.use-regex="true" \
-  --set controller.config.ssl-redirect="false" \
-  --set controller.config.server-tokens="false" \
-  --wait --timeout 10m
-print_success "ingress-nginx controller deployed."
+kubectl apply -f 05-ingress-nginx.yaml
+wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
 
 print_status "Installing metrics-server..."
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -132,7 +115,7 @@ print_status "Phase 6: Networking, Scaling, and Security"
 kubectl apply -f 10-ingress-resources.yaml
 kubectl apply -f 11-hpa-configurations.yaml
 kubectl apply -f 12-pod-disruption-budgets.yaml
-kubectl apply -f 13-network-policies.yaml
+# kubectl apply -f 13-network-policies.yaml  # Optional: Enable for network segmentation
 print_success "Networking, scaling, and security policies applied."
 
 # --- Final Verification ---
