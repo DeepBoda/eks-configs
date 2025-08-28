@@ -69,12 +69,17 @@ kubectl apply -f 00-namespaces.yaml
 kubectl apply -f 01-storage-classes.yaml
 kubectl apply -f 02-rbac-irsa.yaml
 print_status "Ensuring EBS CSI driver addon is installed..."
-aws eks create-addon \
-  --cluster-name "$CLUSTER_NAME" \
-  --region "$AWS_REGION" \
-  --addon-name aws-ebs-csi-driver \
-  --service-account-role-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole" \
-  --resolve-conflicts PRESERVE
+if aws eks describe-addon --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver &> /dev/null; then
+  print_status "EBS CSI driver addon already exists. Verifying status..."
+else
+  print_status "EBS CSI driver addon not found. Creating..."
+  aws eks create-addon \
+    --cluster-name "$CLUSTER_NAME" \
+    --region "$AWS_REGION" \
+    --addon-name aws-ebs-csi-driver \
+    --service-account-role-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole" \
+    --resolve-conflicts PRESERVE
+fi
 print_status "Waiting for EBS CSI driver addon to become active..."
 aws eks wait addon-active --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver
 print_success "Core infrastructure applied."
