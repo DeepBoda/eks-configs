@@ -8,7 +8,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:123456789012:certificate/abc-def-ghi
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:838645860193:certificate/19f0eb97-784f-4d85-bd1b-c6efabb9d8fa
     alb.ingress.kubernetes.io/ssl-redirect: "443"
 spec:
   ingressClassName: alb
@@ -50,7 +50,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: sandee-elasticsearch
+                name: elasticsearch
                 port:
                   number: 80
     - host: eks-redis.sandee.com
@@ -60,6 +60,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: sandee-redis
+                name: redis
                 port:
                   number: 6379

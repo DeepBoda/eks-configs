@@ -176,6 +176,16 @@ All sensitive data is stored in Kubernetes secrets:
 
 ## 🌐 Domain Configuration
 
+The following domains are exposed:
+
+- eks.sandee.com → Frontend
+- eks-backend.sandee.com → Backend API
+- eks-admin.sandee.com → Admin Panel
+- eks-elasticsearch.sandee.com → Elasticsearch
+- eks-redis.sandee.com → Redis
+
+Hosted Zone: sandee.com (ID: Z07447471NF0OXP20NO0O)
+
 ### Primary Domains (ALB)
 
 - `sandee.com` → Frontend

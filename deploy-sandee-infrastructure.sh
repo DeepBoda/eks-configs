@@ -153,8 +153,27 @@ helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-contro
 kubectl rollout status deployment/aws-load-balancer-controller \
   -n aws-load-balancer-controller --timeout=600s
 
+print_status "Deploying ingress-nginx controller via Helm"
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --set controller.metrics.enabled=true \
+  --wait \
+  --timeout 10m
+wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
+print_success "ingress-nginx controller installed"
+
+
 kubectl apply -f 05-ingress-nginx.yaml
 wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
+
+print_status "Installing metrics-server"
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+wait_for_deployment "metrics-server" "kube-system"
+print_success "metrics-server installed"
+
 print_success "Phase 2 complete."
 
 # Phase 3: Database Layer (external RDS)

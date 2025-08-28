@@ -59,10 +59,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: sandee-elasticsearch
+  name: elasticsearch
   namespace: sandee
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - port: 80
       targetPort: 9200
@@ -76,10 +79,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: sandee-redis
+  name: redis
   namespace: sandee
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - port: 6379
       targetPort: 6379
