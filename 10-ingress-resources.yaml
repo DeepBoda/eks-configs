@@ -22,43 +22,43 @@ spec:
                 name: sandee-frontend
                 port:
                   number: 80
-    - host: eks-backend.sandee.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sandee-backend
-                port:
-                  number: 80
-    - host: eks-admin.sandee.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sandee-admin
-                port:
-                  number: 80
-    - host: eks-elasticsearch.sandee.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sandee-elasticsearch
-                port:
-                  number: 80
-    - host: eks-redis.sandee.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sandee-redis
-                port:
-                  number: 6379
+    # - host: eks-backend.sandee.com
+    #   http:
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: sandee-backend
+    #             port:
+    #               number: 80
+    # - host: eks-admin.sandee.com
+    #   http:
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: sandee-admin
+    #             port:
+    #               number: 80
+    # - host: eks-elasticsearch.sandee.com
+    #   http:
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: sandee-elasticsearch
+    #             port:
+    #               number: 80
+    # - host: eks-redis.sandee.com
+    #   http:
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: sandee-redis
+    #             port:
+    #               number: 6379
