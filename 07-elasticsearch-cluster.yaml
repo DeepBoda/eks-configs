@@ -1,206 +1,162 @@
----
-# 1️⃣ DaemonSet to set vm.max_map_count on all nodes
+# Simplified Elasticsearch Deployment (Single Node)
 apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: elasticsearch-sysctl
-  namespace: kube-system
-spec:
-  selector:
-    matchLabels:
-      app: elasticsearch-sysctl
-  template:
-    metadata:
-      labels:
-        app: elasticsearch-sysctl
-    spec:
-      hostPID: true
-      containers:
-      - name: sysctl
-        image: busybox:1.37
-        securityContext:
-          privileged: true
-        command: ["sh", "-c", "sysctl -w vm.max_map_count=262144 && sleep infinity"]
-      tolerations:
-      - operator: "Exists"
----
-# 2️⃣ ConfigMap for Elasticsearch settings
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: elasticsearch-config
-  namespace: sandee
-data:
-  elasticsearch.yml: |
-    cluster.name: sandee-elasticsearch
-    node.name: ${HOSTNAME}
-    node.roles: ["master","data","ingest"]
-    network.host: 0.0.0.0
-    discovery.seed_hosts:
-      - elasticsearch-0.elasticsearch.sandee.svc.cluster.local
-      - elasticsearch-1.elasticsearch.sandee.svc.cluster.local
-      - elasticsearch-2.elasticsearch.sandee.svc.cluster.local
-    cluster.initial_master_nodes:
-      - elasticsearch-0
-      - elasticsearch-1
-      - elasticsearch-2
-    xpack.security.enabled: true
-    xpack.security.http.ssl.enabled: false
-    xpack.security.transport.ssl.enabled: false
-  jvm.options: |
-    -Xms4g
-    -Xmx4g
-    -XX:+UseG1GC
-    -XX:G1HeapRegionSize=16m
-    -XX:MaxGCPauseMillis=200
-    -XX:+HeapDumpOnOutOfMemoryError
-    -XX:HeapDumpPath=/usr/share/elasticsearch/data
-    -Xlog:gc*:file=/usr/share/elasticsearch/logs/gc.log:utctime,pid,level
----
-# 3️⃣ Secret for Elasticsearch credentials
-apiVersion: v1
-kind: Secret
-metadata:
-  name: elasticsearch-secret
-  namespace: sandee
-type: Opaque
-data:
-  elastic-password: RWxhc3RpY1N0cm9uZ1Bhc3N3b3JkMTIzIQ==   # "ElasticStrongPassword123!"
----
-# 4️⃣ Headless Service (for discovery) + NodePort (for external access)
-apiVersion: v1
-kind: Service
+kind: Deployment
 metadata:
   name: elasticsearch
   namespace: sandee
-spec:
-  clusterIP: None
-  ports:
-  - name: http
-    port: 9200
-    targetPort: 9200
-  - name: transport
-    port: 9300
-    targetPort: 9300
-  selector:
+  labels:
     app: elasticsearch
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: elasticsearch-nodeport
-  namespace: sandee
+    component: database
 spec:
-  type: NodePort
-  ports:
-  - name: http
-    port: 9200
-    targetPort: 9200
-    nodePort: 30005
-  selector:
-    app: elasticsearch
----
-# 5️⃣ StatefulSet for Elasticsearch (3 nodes, production-ready)
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: elasticsearch
-  namespace: sandee
-spec:
-  serviceName: elasticsearch
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
   template:
     metadata:
       labels:
         app: elasticsearch
+        component: database
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9200"
+        prometheus.io/path: "/_prometheus/metrics"
     spec:
-      securityContext:
-        runAsUser: 1000
-        fsGroup: 1000
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app: elasticsearch
-            topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - elasticsearch
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
-        resources:
-          requests:
-            cpu: "1"
-            memory: "4Gi"
-          limits:
-            cpu: "2"
-            memory: "6Gi"
-        env:
-        - name: ELASTIC_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: elasticsearch-secret
-              key: elastic-password
-        - name: ES_JAVA_OPTS
-          value: "-Xms4g -Xmx4g"
         ports:
         - containerPort: 9200
           name: http
-        - containerPort: 9300
-          name: transport
+          protocol: TCP
+        env:
+        - name: discovery.type
+          value: single-node
+        - name: xpack.security.enabled
+          value: "false"
+        - name: ELASTIC_PASSWORD
+          value: "elastic123"
+        - name: ES_JAVA_OPTS
+          value: "-Xms4g -Xmx4g"
         volumeMounts:
-        - name: es-data
+        - name: elasticsearch-data
           mountPath: /usr/share/elasticsearch/data
-        - name: elasticsearch-config
-          mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
-          subPath: elasticsearch.yml
-        - name: elasticsearch-config
-          mountPath: /usr/share/elasticsearch/config/jvm.options
-          subPath: jvm.options
-        readinessProbe:
-          httpGet:
-            path: /_cluster/health?wait_for_status=yellow&timeout=5s
-            port: 9200
-            httpHeaders:
-            - name: Authorization
-              value: "Basic ZWxhc3RpYzpFbGFzdGljU3Ryb25nUGFzc3dvcmQxMjMh"
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          failureThreshold: 5
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "500m"
+          limits:
+            memory: "6Gi"
+            cpu: "1"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
         livenessProbe:
           httpGet:
             path: /_cluster/health?local=true
             port: 9200
-            httpHeaders:
-            - name: Authorization
-              value: "Basic ZWxhc3RpYzpFbGFzdGljU3Ryb25nUGFzc3dvcmQxMjMh"
-          initialDelaySeconds: 90
+          initialDelaySeconds: 60
           periodSeconds: 30
-          failureThreshold: 5
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health?wait_for_status=yellow&timeout=5s
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /_cluster/health?local=true
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
       volumes:
-      - name: elasticsearch-config
-        configMap:
-          name: elasticsearch-config
-  volumeClaimTemplates:
-  - metadata:
-      name: es-data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-elasticsearch-fast
-      resources:
-        requests:
-          storage: 50Gi
+      - name: elasticsearch-data
+        persistentVolumeClaim:
+          claimName: elasticsearch-pvc
+      terminationGracePeriodSeconds: 120
+      nodeSelector:
+        kubernetes.io/os: linux
 ---
-# 6️⃣ PodDisruptionBudget
+# Elasticsearch PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-pvc
+  namespace: sandee
+  labels:
+    app: elasticsearch
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3-elasticsearch-fast
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Elasticsearch Service (ClusterIP for internal communication)
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: sandee
+  labels:
+    app: elasticsearch
+    component: service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9200
+    targetPort: 9200
+    name: http
+  selector:
+    app: elasticsearch
+---
+# Elasticsearch PodDisruptionBudget
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: elasticsearch-pdb
   namespace: sandee
+  labels:
+    app: elasticsearch
 spec:
-  minAvailable: 2
+  minAvailable: 1
   selector:
     matchLabels:
       app: elasticsearch
