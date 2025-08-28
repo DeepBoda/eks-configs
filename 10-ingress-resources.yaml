@@ -48,7 +48,6 @@ spec:
             port:
               number: 3000
 ---
-# NGINX Ingress for Internal Services (Simplified - no snippets)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -73,26 +72,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
-  tls:
-  - hosts:
-    # - admin.sandee.com
-    - eks-admin.sandee.com
-    # - backend-v2.sandee.com
-    - eks-backend.sandee.com
-    - eks-redis.sandee.com
-    - eks-elasticsearch.sandee.com
-    secretName: sandee-tls-secret
   rules:
-  # - host: admin.sandee.com
-  #   http:
-  #     paths:
-  #     - path: /()(.*)
-  #       pathType: ImplementationSpecific
-  #       backend:
-  #         service:
-  #           name: sandee-admin
-  #           port:
-  #             number: 3000
   - host: eks-admin.sandee.com
     http:
       paths:
@@ -103,16 +83,6 @@ spec:
             name: sandee-admin
             port:
               number: 3000
-  # - host: backend-v2.sandee.com
-  #   http:
-  #     paths:
-  #     - path: /(api|health|ready)(/|$)(.*)
-  #       pathType: ImplementationSpecific
-  #       backend:
-  #         service:
-  #           name: sandee-backend
-  #           port:
-  #             number: 8008
   - host: eks-backend.sandee.com
     http:
       paths:
@@ -143,34 +113,3 @@ spec:
             name: elasticsearch
             port:
               number: 9200
----
-# # Redirect Ingress for www to non-www
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: sandee-redirect
-#   namespace: sandee
-#   labels:
-#     app: sandee
-#     component: redirect
-#   annotations:
-#     kubernetes.io/ingress.class: nginx
-#     nginx.ingress.kubernetes.io/permanent-redirect: https://sandee.com$request_uri
-#     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-# spec:
-#   ingressClassName: nginx
-#   tls:
-#   - hosts:
-#     - www.sandee.com
-#     secretName: sandee-www-tls-secret
-#   rules:
-#   - host: www.sandee.com
-#     http:
-#       paths:
-#       - path: /
-#         pathType: Prefix
-#         backend:
-#           service:
-#             name: sandee-frontend
-#             port:
-#               number: 3000
