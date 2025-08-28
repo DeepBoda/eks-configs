@@ -2,231 +2,141 @@
 set -euo pipefail
 
 # Sandee EKS Infrastructure Deployment Script
-# This script deploys the complete Sandee application infrastructure on EKS
+# This script deploys the complete Sandee application infrastructure on EKS from scratch.
 
-# Colors for output
+# --- Configuration ---
+CLUSTER_NAME="sandee"
+AWS_REGION="us-east-1"
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# --- Colors for output ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Print an informational message
-print_status() {
-  echo -e "${BLUE}[INFO]${NC} $1"
-}
+# --- Helper Functions ---
+print_status() { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# Print a success message
-print_success() {
-  echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-# Print a warning message
-print_warning() {
-  echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-# Print an error message and exit
-print_error() {
-  echo -e "${RED}[ERROR]${NC} $1"
-  exit 1
-}
-
-# Check that a command exists
 check_command() {
   if ! command -v "$1" &> /dev/null; then
-    print_error "Required command '$1' is not installed."
+    print_error "Required command '$1' is not installed. Please install it and try again."
   fi
 }
 
-# Wait for a deployment to be available
 wait_for_deployment() {
   local name="$1"
   local ns="$2"
-  local timeout="${3:-300}"
-  print_status "Waiting for deployment '$name' in namespace '$ns'..."
-  if ! kubectl wait --for=condition=Available \
-      "deployment/$name" -n "$ns" --timeout="${timeout}s"; then
+  local timeout="${3:-600}"
+  print_status "Waiting up to ${timeout}s for deployment '$name' in namespace '$ns' to become available..."
+  if ! kubectl wait --for=condition=Available "deployment/$name" -n "$ns" --timeout="${timeout}s"; then
     print_error "Deployment '$name' did not become ready within ${timeout}s."
   fi
   print_success "Deployment '$name' is ready."
 }
 
-# Wait for pods matching a label to be ready
 wait_for_pods() {
   local label="$1"
   local ns="$2"
   local timeout="${3:-600}"
-  print_status "Waiting for pods with label '$label' in namespace '$ns'..."
+  print_status "Waiting up to ${timeout}s for pods with label '$label' in namespace '$ns' to be ready..."
   if ! kubectl wait --for=condition=Ready pod -l "$label" -n "$ns" --timeout="${timeout}s"; then
-    print_error "Pods with label '$label' not ready within ${timeout}s."
+    print_error "Pods with label '$label' did not become ready within ${timeout}s."
   fi
   print_success "Pods with label '$label' are ready."
 }
 
-# Wait for a namespace to be Active
-wait_for_namespace() {
-  local ns="$1"
-  local timeout="${2:-60}"
-  local start
-  start=$(date +%s)
-  print_status "Waiting for namespace '$ns' to be Active..."
-  while true; do
-    local phase
-    phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
-    if [[ "$phase" == "Active" ]]; then
-      print_success "Namespace '$ns' is Active."
-      return
-    fi
-    if (( $(date +%s) - start > timeout )); then
-      print_error "Namespace '$ns' did not become Active within ${timeout}s."
-    fi
-    sleep 2
-  done
-}
-
-# Load configuration variables
-CLUSTER_NAME="sandee"
-AWS_REGION="us-east-1"
-AWS_ACCOUNT_ID="838645860193"
-
-# Main execution
+# --- Main Execution ---
 print_status "Starting Sandee EKS Infrastructure Deployment"
 print_status "=========================================="
 
-# Pre-flight checks
-for cmd in kubectl aws helm; do
-  check_command "$cmd"
-done
-
+# 1. Pre-flight Checks
+print_status "Phase 1: Pre-flight Checks"
+for cmd in kubectl aws helm; do check_command "$cmd"; done
 print_status "Verifying kubectl connectivity..."
-kubectl cluster-info &> /dev/null || print_error "kubectl cannot connect to cluster."
-
+kubectl cluster-info &> /dev/null || print_error "kubectl cannot connect to the cluster."
 print_status "Verifying EKS cluster '$CLUSTER_NAME' exists..."
-aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" &> /dev/null \
-  || print_error "EKS cluster '$CLUSTER_NAME' not found."
-
+aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" &> /dev/null || print_error "EKS cluster '$CLUSTER_NAME' not found."
 print_success "Pre-flight checks passed."
 
-# Phase 1: Core Infrastructure
-print_status "Phase 1: Core Infrastructure"
+# 2. Core Infrastructure Setup
+print_status "Phase 2: Core Infrastructure (Namespaces, Storage, RBAC)"
 kubectl apply -f 00-namespaces.yaml
-wait_for_namespace "sandee"
-wait_for_namespace "aws-load-balancer-controller"
 kubectl apply -f 01-storage-classes.yaml
 kubectl apply -f 02-rbac-irsa.yaml
+print_status "Ensuring EBS CSI driver addon is installed..."
+aws eks create-addon --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver --service-account-role-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole" --resolve-conflicts PRESERVE &> /dev/null
+print_success "Core infrastructure applied."
 
-# Ensure EBS CSI addon is installed (idempotent)
-print_status "Ensuring EBS CSI driver addon is installed"
-aws eks describe-addon --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver >/dev/null 2>&1 \
-  && print_status "EBS CSI addon already installed" \
-  || aws eks create-addon --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --addon-name aws-ebs-csi-driver --service-account-role-arn "arn:aws:iam::$AWS_ACCOUNT_ID:role/AmazonEKS_EBS_CSI_DriverRole"
-print_success "Phase 1 complete."
-
-# Phase 2: Infrastructure Components
-print_status "Phase 2: Infrastructure Components"
+# 3. Infrastructure Components (Autoscaler, Load Balancers, Metrics)
+print_status "Phase 3: Infrastructure Components"
 kubectl apply -f 03-cluster-autoscaler.yaml
-wait_for_deployment "cluster-autoscaler" "kube-system" 900
+wait_for_deployment "cluster-autoscaler" "kube-system"
 
-# Dynamic values
-VPC_ID=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
-  --query "cluster.resourcesVpcConfig.vpcId" --output text)
-
-print_status "Deploying AWS Load Balancer Controller via Helm"
-
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update
-kubectl delete ingressclass nginx --ignore-not-found
-kubectl delete serviceaccount ingress-nginx -n ingress-nginx --ignore-not-found
+VPC_ID=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" --query "cluster.resourcesVpcConfig.vpcId" --output text)
+print_status "Deploying AWS Load Balancer Controller for VPC '$VPC_ID'..."
+helm repo add eks https://aws.github.io/eks-charts &> /dev/null
+helm repo update &> /dev/null
 helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  --namespace aws-load-balancer-controller \
-  --set installCRDs=true \
+  -n aws-load-balancer-controller --create-namespace \
   --set clusterName="$CLUSTER_NAME" \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller \
-  --set rbac.create=false \
-  --set region="$AWS_REGION" \
-  --set vpcId="$VPC_ID" \
-  --set image.tag=v2.13.4 \
-  --atomic \
-  --wait \
-  --timeout 10m \
-  --force
-kubectl rollout status deployment/aws-load-balancer-controller \
-  -n aws-load-balancer-controller --timeout=600s
+  --wait --timeout 10m
+print_success "AWS Load Balancer Controller deployed."
 
-print_status "Deploying ingress-nginx controller via Helm"
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
-
-print_status "Resetting ingress-nginx resources for clean install"
-# Delete namespace-scoped resources first
-kubectl delete all --all -n ingress-nginx --ignore-not-found
-# Delete cluster-scoped resources that might be left over
-kubectl delete clusterrole ingress-nginx ingress-nginx-admission --ignore-not-found
-kubectl delete clusterrolebinding ingress-nginx ingress-nginx-admission --ignore-not-found
-kubectl delete ingressclass nginx --ignore-not-found
-kubectl delete ValidatingWebhookConfiguration ingress-nginx-admission --ignore-not-found
-kubectl delete MutatingWebhookConfiguration ingress-nginx-admission --ignore-not-found
-print_status "Waiting for resources to be deleted..."
-sleep 15 # Give some time for resources to terminate
-
-print_status "Installing/Upgrading ingress-nginx via Helm"
+print_status "Deploying ingress-nginx controller..."
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx &> /dev/null
+helm repo update &> /dev/null
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace \
+  -n ingress-nginx --create-namespace \
   --set controller.metrics.enabled=true \
   --set controller.config.proxy-body-size="10g" \
   --set controller.config.proxy-connect-timeout="600" \
   --set controller.config.proxy-send-timeout="600" \
   --set controller.config.proxy-read-timeout="600" \
-  --set controller.config.proxy-buffering="off" \
   --set controller.config.use-regex="true" \
   --set controller.config.ssl-redirect="false" \
-  --set controller.config.force-ssl-redirect="false" \
   --set controller.config.server-tokens="false" \
-  --wait \
-  --timeout 10m \
-  --force
-wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
-print_success "ingress-nginx controller installed"
+  --wait --timeout 10m
+print_success "ingress-nginx controller deployed."
 
-print_status "Installing metrics-server"
+print_status "Installing metrics-server..."
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 wait_for_deployment "metrics-server" "kube-system"
-print_success "metrics-server installed"
+print_success "Infrastructure components deployed."
 
-print_success "Phase 2 complete."
-
-# Phase 3: Database Layer (external RDS)
-print_status "Phase 3: Database Layer"
+# 4. Data Layer (Redis & Elasticsearch)
+print_status "Phase 4: Data Layer"
 kubectl apply -f 06-redis-statefulset.yaml
-wait_for_pods "app=redis" "sandee"
+kubectl apply -f 07-elasticsearch-secret.yaml
 kubectl apply -f 07-elasticsearch-cluster.yaml
+wait_for_pods "app=redis" "sandee"
 wait_for_pods "app=elasticsearch" "sandee"
-print_success "Phase 3 complete."
+print_success "Data layer deployed."
 
-# Phase 4: Application Layer
-print_status "Phase 4: Application Layer"
+# 5. Application Layer
+print_status "Phase 5: Application Layer"
 kubectl apply -f 08-application-deployments.yaml
+kubectl apply -f 09-services.yaml
 wait_for_deployment "sandee-frontend" "sandee"
 wait_for_deployment "sandee-backend" "sandee"
 wait_for_deployment "sandee-admin" "sandee"
-# wait_for_deployment "sandee-cron" "sandee"
-kubectl apply -f 09-services.yaml
-print_success "Phase 4 complete."
+print_success "Application layer deployed."
 
-# Phase 5: Networking and Scaling
-print_status "Phase 5: Networking and Scaling"
+# 6. Networking, Scaling, and Security
+print_status "Phase 6: Networking, Scaling, and Security"
 kubectl apply -f 10-ingress-resources.yaml
 kubectl apply -f 11-hpa-configurations.yaml
 kubectl apply -f 12-pod-disruption-budgets.yaml
-print_success "Phase 5 complete."
+kubectl apply -f 13-network-policies.yaml
+print_success "Networking, scaling, and security policies applied."
 
-# Deployment Verification
-print_status "Verifying deployment"
+# --- Final Verification ---
+print_status "Final Verification..."
 kubectl get pods,svc,ingress,hpa,pdb -n sandee
-kubectl get pods -n ingress-nginx
-kubectl get pods -n aws-load-balancer-controller
-kubectl get pods -n kube-system | grep cluster-autoscaler
-print_success "Deployment successful!"
+print_success "Deployment script finished successfully!"
