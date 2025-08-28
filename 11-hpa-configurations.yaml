@@ -152,53 +152,53 @@ spec:
         periodSeconds: 30
       selectPolicy: Max
 ---
-# Cron HPA with CPU and Memory metrics (Conservative scaling)
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: sandee-cron-hpa
-  namespace: sandee
-  labels:
-    app: sandee-cron
-    component: autoscaling
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: sandee-cron
-  minReplicas: 1
-  maxReplicas: 5
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 600
-      policies:
-      - type: Percent
-        value: 25
-        periodSeconds: 120
-      - type: Pods
-        value: 1
-        periodSeconds: 120
-      selectPolicy: Min
-    scaleUp:
-      stabilizationWindowSeconds: 120
-      policies:
-      - type: Percent
-        value: 50
-        periodSeconds: 60
-      - type: Pods
-        value: 1
-        periodSeconds: 60
-      selectPolicy: Max
+# # Cron HPA with CPU and Memory metrics (Conservative scaling)
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: sandee-cron-hpa
+#   namespace: sandee
+#   labels:
+#     app: sandee-cron
+#     component: autoscaling
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: sandee-cron
+#   minReplicas: 1
+#   maxReplicas: 5
+#   metrics:
+#   - type: Resource
+#     resource:
+#       name: cpu
+#       target:
+#         type: Utilization
+#         averageUtilization: 50
+#   - type: Resource
+#     resource:
+#       name: memory
+#       target:
+#         type: Utilization
+#         averageUtilization: 70
+#   behavior:
+#     scaleDown:
+#       stabilizationWindowSeconds: 600
+#       policies:
+#       - type: Percent
+#         value: 25
+#         periodSeconds: 120
+#       - type: Pods
+#         value: 1
+#         periodSeconds: 120
+#       selectPolicy: Min
+#     scaleUp:
+#       stabilizationWindowSeconds: 120
+#       policies:
+#       - type: Percent
+#         value: 50
+#         periodSeconds: 60
+#       - type: Pods
+#         value: 1
+#         periodSeconds: 60
+#       selectPolicy: Max

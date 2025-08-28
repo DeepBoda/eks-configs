@@ -44,20 +44,20 @@ spec:
     matchLabels:
       app: sandee-admin
 ---
-# Cron PodDisruptionBudget
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: sandee-cron-pdb
-  namespace: sandee
-  labels:
-    app: sandee-cron
-    component: availability
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: sandee-cron
+# # Cron PodDisruptionBudget
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: sandee-cron-pdb
+#   namespace: sandee
+#   labels:
+#     app: sandee-cron
+#     component: availability
+# spec:
+#   minAvailable: 1
+#   selector:
+#     matchLabels:
+#       app: sandee-cron
 ---
 # NGINX Ingress Controller PodDisruptionBudget
 apiVersion: policy/v1

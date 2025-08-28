@@ -56,21 +56,21 @@ spec:
   selector:
     app: sandee-admin
 ---
-# Cron Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: sandee-cron
-  namespace: sandee
-  labels:
-    app: sandee-cron
-    component: cron
-spec:
-  type: ClusterIP
-  ports:
-  - port: 5001
-    targetPort: 5001
-    name: http
-    protocol: TCP
-  selector:
-    app: sandee-cron
+# # Cron Service
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: sandee-cron
+#   namespace: sandee
+#   labels:
+#     app: sandee-cron
+#     component: cron
+# spec:
+#   type: ClusterIP
+#   ports:
+#   - port: 5001
+#     targetPort: 5001
+#     name: http
+#     protocol: TCP
+#   selector:
+#     app: sandee-cron

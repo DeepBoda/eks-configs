@@ -171,7 +171,7 @@ kubectl apply -f 08-application-deployments.yaml
 wait_for_deployment "sandee-frontend" "sandee"
 wait_for_deployment "sandee-backend" "sandee"
 wait_for_deployment "sandee-admin" "sandee"
-wait_for_deployment "sandee-cron" "sandee"
+# wait_for_deployment "sandee-cron" "sandee"
 kubectl apply -f 09-services.yaml
 print_success "Phase 4 complete."
 
