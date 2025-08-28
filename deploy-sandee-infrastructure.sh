@@ -137,6 +137,7 @@ print_status "Deploying AWS Load Balancer Controller via Helm"
 
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
+kubectl delete serviceaccount ingress-nginx -n ingress-nginx --ignore-not-found
 helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --namespace aws-load-balancer-controller \
   --set installCRDs=true \
@@ -149,19 +150,23 @@ helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-contro
   --set image.tag=v2.13.4 \
   --atomic \
   --wait \
-  --timeout 10m
+  --timeout 10m \
+  --force
 kubectl rollout status deployment/aws-load-balancer-controller \
   -n aws-load-balancer-controller --timeout=600s
 
 print_status "Deploying ingress-nginx controller via Helm"
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+kubectl delete serviceaccount ingress-nginx -n ingress-nginx --ignore-not-found
+kubectl delete configmap ingress-nginx-controller -n ingress-nginx --ignore-not-found
 helm repo update
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --set controller.metrics.enabled=true \
   --wait \
-  --timeout 10m
+  --timeout 10m \
+  --force
 wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
 print_success "ingress-nginx controller installed"
 
