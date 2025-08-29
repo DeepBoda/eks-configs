@@ -4,7 +4,7 @@ metadata:
   name: aws-load-balancer-controller
   namespace: kube-system
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::838645860193:role/AmazonEKSLoadBalancerControllerRole
+    eks.amazonaws.com/role-arn: arn:aws:iam::830986456729:role/AmazonEKSLoadBalancerControllerRole
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
