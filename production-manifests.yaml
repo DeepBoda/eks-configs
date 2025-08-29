@@ -434,11 +434,8 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
-    nginx.ingress.kubernetes.io/server-snippet: |
-      if ($host = 'www.eks.sandee.com') {
-        return 301 https://eks.sandee.com$request_uri;
-      }
+    nginx.ingress.kubernetes.io/permanent-redirect: "https://eks.sandee.com"
+    nginx.ingress.kubernetes.io/permanent-redirect-code: "301"
 spec:
   ingressClassName: nginx
   tls:
