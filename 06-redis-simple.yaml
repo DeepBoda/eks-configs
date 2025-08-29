@@ -62,15 +62,11 @@ spec:
             - ping
           initialDelaySeconds: 5
           periodSeconds: 3
-  volumeClaimTemplates:
-  - metadata:
-      name: redis-data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      storageClassName: gp2
-      resources:
-        requests:
-          storage: 50Gi
+      volumes:
+      - name: redis-data
+        hostPath:
+          path: /mnt/redis-data
+          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service

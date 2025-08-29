@@ -1,17 +1,4 @@
 # Simple Elasticsearch Configuration - Working Version
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: elasticsearch-pvc
-  namespace: sandee
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: gp2
-  resources:
-    requests:
-      storage: 50Gi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -68,8 +55,9 @@ spec:
           periodSeconds: 10
       volumes:
       - name: es-data
-        persistentVolumeClaim:
-          claimName: elasticsearch-pvc
+        hostPath:
+          path: /mnt/elasticsearch-data
+          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
