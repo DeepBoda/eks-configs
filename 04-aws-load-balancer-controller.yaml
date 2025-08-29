@@ -4,22 +4,28 @@ metadata:
   name: aws-load-balancer-controller
   namespace: kube-system
   labels:
-    app: aws-load-balancer-controller
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: aws-load-balancer-controller
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: aws-load-balancer-controller
+      app.kubernetes.io/name: aws-load-balancer-controller
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: aws-load-balancer-controller
   template:
     metadata:
       labels:
-        app: aws-load-balancer-controller
+        app.kubernetes.io/name: aws-load-balancer-controller
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: aws-load-balancer-controller
     spec:
+      serviceAccountName: aws-load-balancer-controller
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
         fsGroup: 65534
-      serviceAccountName: aws-load-balancer-controller
       containers:
       - name: controller
         image: public.ecr.aws/eks/aws-load-balancer-controller:v2.7.2
