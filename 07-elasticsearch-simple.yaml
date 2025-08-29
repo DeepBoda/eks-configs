@@ -42,11 +42,11 @@ spec:
           value: "false"
         - name: ES_JAVA_OPTS
           value: "-Xms2g -Xmx2g"
+        - name: cluster.name
+          value: "sandee"
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
-        - name: cluster.name
-          value: "sandee-cluster"
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
