@@ -2,18 +2,10 @@
 
 echo "💥 NUCLEAR CLEANUP - EVERYTHING FROM SCRATCH"
 
-# 1. Force delete stuck namespaces by removing finalizers
-echo "🔨 Force deleting stuck namespaces..."
-for ns in aws-load-balancer-controller ingress-nginx sandee sandee-production; do
-  echo "Force deleting namespace: $ns"
-  kubectl get namespace $ns -o json 2>/dev/null | jq '.spec.finalizers = []' | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-  kubectl delete namespace $ns --force --grace-period=0 2>/dev/null || true
-done
+# 1. Skip namespace cleanup - cluster deletion will clean everything
+echo "⚡ Skipping stuck namespaces - deleting clusters directly..."
 
-# Kill any stuck pods
-kubectl delete pods --all --all-namespaces --force --grace-period=0 2>/dev/null || true
-
-# 2. Delete clusters in parallel (faster)
+# 2. Delete clusters in parallel (this cleans everything)
 echo "🗑️ Deleting clusters in parallel..."
 eksctl delete cluster --name sandee --region us-east-1 --disable-nodegroup-eviction --parallel=10 &
 eksctl delete cluster --name sandee-new --region us-east-1 --disable-nodegroup-eviction --parallel=10 &
@@ -57,7 +49,12 @@ eksctl create cluster \
   --appmesh-access \
   --alb-ingress-access
 
-# 6. Verify fresh setup
+# 6. Clean up any default namespaces we don't need
+echo "🧹 Cleaning up unnecessary namespaces..."
+kubectl delete namespace aws-load-balancer-controller --ignore-not-found
+kubectl delete namespace ingress-nginx --ignore-not-found
+
+# 7. Verify fresh setup
 echo "✅ Fresh setup complete!"
 echo "📋 New cluster info:"
 kubectl cluster-info
