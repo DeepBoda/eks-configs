@@ -105,9 +105,10 @@ print_header "Phase 1: Core Infrastructure"
 print_status "Creating namespaces..."
 kubectl apply -f 00-namespaces.yaml
 
-print_status "Setting up optimized storage classes..."
+print_status "Setting up storage classes..."
 kubectl delete storageclass gp3-optimized gp3-redis gp3-elasticsearch redis-high-performance elasticsearch-high-performance --ignore-not-found=true
 kubectl apply -f 01-storage-classes.yaml
+print_status "Using gp2 as fallback storage class due to EBS CSI issues"
 
 print_status "Configuring RBAC and IRSA..."
 kubectl apply -f 02-rbac-irsa.yaml
@@ -139,7 +140,7 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   }
 
 print_status "Deploying NGINX Ingress Controller..."
-kubectl apply -f 05-ingress-nginx.yaml
+kubectl apply -f 05-ingress-nginx-simple.yaml
 wait_for_deployment "ingress-nginx-controller" "ingress-nginx"
 
 print_status "Installing Metrics Server..."
@@ -149,12 +150,12 @@ wait_for_deployment "metrics-server" "kube-system"
 # Phase 3: High-Performance Database Layer
 print_header "Phase 3: High-Performance Database Layer"
 
-print_status "Deploying Optimized Redis Cluster..."
-kubectl apply -f 06-redis-optimized.yaml
-wait_for_statefulset "redis" "sandee" 3
+print_status "Deploying Simple Redis..."
+kubectl apply -f 06-redis-simple.yaml
+wait_for_statefulset "redis" "sandee" 1
 
-print_status "Deploying Optimized Elasticsearch..."
-kubectl apply -f 07-elasticsearch-optimized.yaml
+print_status "Deploying Simple Elasticsearch..."
+kubectl apply -f 07-elasticsearch-simple.yaml
 wait_for_deployment "elasticsearch" "sandee"
 
 # Phase 4: Application Layer
