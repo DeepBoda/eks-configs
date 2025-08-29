@@ -1,4 +1,30 @@
-# Simplified Elasticsearch Deployment (Single Node)
+# Elasticsearch Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: elasticsearch-secret
+  namespace: sandee
+type: Opaque
+data:
+  elastic-password: c2RYQkNsSXdMWGpCSHZlSm1xSWg=
+---
+# High-Performance Elasticsearch Storage Class
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: elasticsearch-high-performance
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  iops: "16000"
+  throughput: "1000"
+  encrypted: "true"
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+# Elasticsearch Deployment - Optimized
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,7 +34,7 @@ metadata:
     app: elasticsearch
     component: database
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: elasticsearch
@@ -16,7 +42,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 25%
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -39,6 +65,18 @@ spec:
                   values:
                   - elasticsearch
               topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node.kubernetes.io/instance-type
+                operator: In
+                values:
+                - m6i.large
+                - m6i.xlarge
+                - m6i.2xlarge
+                - m6i.4xlarge
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -46,12 +84,26 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+      - name: increase-vm-max-map
+        image: busybox:1.36
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: increase-fd-ulimit
+        image: busybox:1.36
+        command: ["sh", "-c", "ulimit -n 65536"]
+        securityContext:
+          privileged: true
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
         ports:
         - containerPort: 9200
           name: http
+          protocol: TCP
+        - containerPort: 9300
+          name: transport
           protocol: TCP
         env:
         - name: discovery.type
@@ -64,22 +116,45 @@ spec:
               name: elasticsearch-secret
               key: elastic-password
         - name: ES_JAVA_OPTS
-          value: "-Xms4g -Xmx4g"
+          value: "-Xms6g -Xmx6g -XX:+UseG1GC -XX:G1HeapRegionSize=32m -XX:+UseStringDeduplication"
+        - name: bootstrap.memory_lock
+          value: "true"
+        - name: cluster.name
+          value: "sandee-cluster"
+        - name: node.name
+          value: "sandee-node-1"
+        - name: network.host
+          value: "0.0.0.0"
+        - name: http.port
+          value: "9200"
+        - name: transport.port
+          value: "9300"
+        - name: indices.memory.index_buffer_size
+          value: "30%"
+        - name: indices.memory.min_index_buffer_size
+          value: "96mb"
+        - name: thread_pool.write.queue_size
+          value: "1000"
+        - name: thread_pool.search.queue_size
+          value: "1000"
         volumeMounts:
         - name: elasticsearch-data
           mountPath: /usr/share/elasticsearch/data
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "500m"
-          limits:
             memory: "6Gi"
             cpu: "1"
+          limits:
+            memory: "8Gi"
+            cpu: "2"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
+            add:
+            - IPC_LOCK
+            - SYS_RESOURCE
           readOnlyRootFilesystem: false
           runAsNonRoot: true
           runAsUser: 1000
@@ -88,7 +163,7 @@ spec:
           httpGet:
             path: /_cluster/health?local=true
             port: 9200
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90
           periodSeconds: 30
           timeoutSeconds: 10
           failureThreshold: 3
@@ -96,7 +171,7 @@ spec:
           httpGet:
             path: /_cluster/health?wait_for_status=yellow&timeout=5s
             port: 9200
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
@@ -104,7 +179,7 @@ spec:
           httpGet:
             path: /_cluster/health?local=true
             port: 9200
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 30
@@ -127,12 +202,12 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: gp3-elasticsearch
+  storageClassName: elasticsearch-high-performance
   resources:
     requests:
-      storage: 50Gi
+      storage: 100Gi
 ---
-# Elasticsearch Service (ClusterIP for internal communication)
+# Elasticsearch Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -147,6 +222,9 @@ spec:
   - port: 9200
     targetPort: 9200
     name: http
+  - port: 9300
+    targetPort: 9300
+    name: transport
   selector:
     app: elasticsearch
 ---
@@ -159,7 +237,7 @@ metadata:
   labels:
     app: elasticsearch
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: elasticsearch

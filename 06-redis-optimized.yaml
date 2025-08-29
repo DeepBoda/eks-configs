@@ -1,5 +1,21 @@
 ---
-# Redis ConfigMap
+# High-Performance Redis Storage Class
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: redis-high-performance
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  iops: "6000"
+  throughput: "250"
+  encrypted: "true"
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+# Redis ConfigMap - Optimized for Speed & Persistence
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,60 +28,11 @@ data:
   redis.conf: |
     # Network
     bind 0.0.0.0
-    protected-mode no
+    protected-mode yes
+    # Password configured via environment variable
     port 6379
-    tcp-backlog 511
-    tcp-keepalive 300
-    
-    # General
-    daemonize no
-    supervised no
-    pidfile /var/run/redis_6379.pid
-    loglevel notice
-    logfile ""
-    databases 16
-    
-    # Snapshotting
-    save 900 1
-    save 300 10
-    save 60 10000
-    stop-writes-on-bgsave-error yes
-    rdbcompression yes
-    rdbchecksum yes
-    dbfilename dump.rdb
-    dir /data
-    
-    # Replication
-    replica-serve-stale-data yes
-    replica-read-only no
-    repl-diskless-sync no
-    repl-diskless-sync-delay 5
-    repl-ping-replica-period 10
-    repl-timeout 60
-    repl-disable-tcp-nodelay no
-    repl-backlog-size 1mb
-    repl-backlog-ttl 3600
-    
-    # Memory Management
-    maxmemory 4.8gb
-    maxmemory-policy allkeys-lru
-    lazyfree-lazy-eviction yes
-    lazyfree-lazy-expire yes
-    lazyfree-lazy-server-del yes
-    replica-lazy-flush yes
-    
-    # Append Only File
-    appendonly yes
-    appendfilename "appendonly.aof"
-    appendfsync everysec
-    no-appendfsync-on-rewrite no
-    auto-aof-rewrite-percentage 100
-    auto-aof-rewrite-min-size 64mb
-    aof-load-truncated yes
-    aof-use-rdb-preamble yes
-    
-    # Lua scripting
-    lua-time-limit 5000
+    tcp-backlog 2048
+    tcp-keepalive 60
     
     # Redis Stack modules
     loadmodule /opt/redis-stack/lib/rediscompat.so
@@ -73,37 +40,72 @@ data:
     loadmodule /opt/redis-stack/lib/redistimeseries.so
     loadmodule /opt/redis-stack/lib/rejson.so
     loadmodule /opt/redis-stack/lib/redisbloom.so
-    loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so
     
-    # Slow log
+    # Memory Management - Optimized
+    maxmemory 5gb
+    maxmemory-policy volatile-lru
+    maxmemory-samples 10
+    
+    # Persistence - Dual RDB + AOF
+    save 60 1000
+    save 300 100
+    save 900 1
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+    
+    # AOF Configuration
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite yes
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+    aof-use-rdb-preamble yes
+    
+    # Performance Optimizations
+    io-threads 8
+    io-threads-do-reads yes
+    hz 100
+    dynamic-hz yes
+    
+    # Logging
+    loglevel notice
+    logfile "/data/redis.log"
+    
+    # Slow Log
     slowlog-log-slower-than 10000
-    slowlog-max-len 128
+    slowlog-max-len 2048
     
-    # Latency monitor
+    # Latency Monitoring
     latency-monitor-threshold 100
     
-    # Event notification
-    notify-keyspace-events ""
+    # Lazy Freeing
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    replica-lazy-flush yes
     
-    # Advanced config
-    hash-max-ziplist-entries 512
-    hash-max-ziplist-value 64
-    list-max-ziplist-size -2
-    list-compress-depth 0
-    set-max-intset-entries 512
-    zset-max-ziplist-entries 128
-    zset-max-ziplist-value 64
-    hll-sparse-max-bytes 3000
-    stream-node-max-bytes 4096
-    stream-node-max-entries 100
-    activerehashing yes
+    # Client Output Buffers
     client-output-buffer-limit normal 0 0 0
     client-output-buffer-limit replica 256mb 64mb 60
     client-output-buffer-limit pubsub 32mb 8mb 60
-    hz 10
-    dynamic-hz yes
-    aof-rewrite-incremental-fsync yes
-    rdb-save-incremental-fsync yes
+    
+    # Security
+    rename-command FLUSHDB ""
+    rename-command FLUSHALL ""
+    rename-command CONFIG "CONFIG_b835729c9c774d83a7d82b5bb3d0a7ca"
+    
+    # Advanced
+    stop-writes-on-bgsave-error yes
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-size -2
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
 ---
 # Redis Secret
 apiVersion: v1
@@ -117,43 +119,7 @@ type: Opaque
 data:
   redis-password: UmVkaXNTdHJvbmdQYXNzd29yZDEyMyE=  # RedisStrongPassword123!
 ---
-# Redis Service (Headless for StatefulSet)
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis
-  namespace: sandee
-  labels:
-    app: redis
-    component: service
-spec:
-  clusterIP: None
-  ports:
-  - port: 6379
-    targetPort: 6379
-    name: redis
-  selector:
-    app: redis
----
-# Redis Service (ClusterIP for external access)
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-service
-  namespace: sandee
-  labels:
-    app: redis
-    component: external-service
-spec:
-  type: ClusterIP
-  ports:
-  - port: 6379
-    targetPort: 6379
-    name: redis
-  selector:
-    app: redis
----
-# Redis StatefulSet
+# Redis StatefulSet - High Performance
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -205,10 +171,10 @@ spec:
               - key: node.kubernetes.io/instance-type
                 operator: In
                 values:
-                - m5.large
-                - m5.xlarge
-                - r5.large
-                - r5.xlarge
+                - m6i.large
+                - m6i.xlarge
+                - m6i.2xlarge
+                - m6i.4xlarge
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: topology.kubernetes.io/zone
@@ -233,6 +199,12 @@ spec:
         command:
         - redis-server
         - /usr/local/etc/redis/redis.conf
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: redis-password
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -241,10 +213,10 @@ spec:
           subPath: redis.conf
         resources:
           requests:
-            memory: "2Gi"
-            cpu: "500m"
+            memory: "4Gi"
+            cpu: "1"
           limits:
-            memory: "6Gi"
+            memory: "8Gi"
             cpu: "2"
         securityContext:
           allowPrivilegeEscalation: false
@@ -260,7 +232,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli ping
+            - redis-cli -a $REDIS_PASSWORD ping
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
@@ -270,7 +242,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli ping
+            - redis-cli -a $REDIS_PASSWORD ping
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3
@@ -280,7 +252,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli ping
+            - redis-cli -a $REDIS_PASSWORD ping
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
@@ -300,10 +272,46 @@ spec:
         app: redis
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-redis
+      storageClassName: redis-high-performance
       resources:
         requests:
-          storage: 20Gi
+          storage: 50Gi
+---
+# Redis Service (Headless for StatefulSet)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: sandee
+  labels:
+    app: redis
+    component: service
+spec:
+  clusterIP: None
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+---
+# Redis Service (ClusterIP for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: sandee
+  labels:
+    app: redis
+    component: external-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
 ---
 # Redis PodDisruptionBudget
 apiVersion: policy/v1

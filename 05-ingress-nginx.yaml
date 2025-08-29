@@ -21,6 +21,18 @@ spec:
         app.kubernetes.io/instance: ingress-nginx
         app.kubernetes.io/name: ingress-nginx
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - ingress-nginx
+              topologyKey: kubernetes.io/hostname
       serviceAccountName: ingress-nginx
       containers:
       - name: controller
@@ -49,11 +61,11 @@ spec:
           containerPort: 443
         resources:
           requests:
-            cpu: 100m
-            memory: 90Mi
-          limits:
             cpu: 200m
-            memory: 200Mi
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
         livenessProbe:
           httpGet:
             path: /healthz

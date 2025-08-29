@@ -51,7 +51,9 @@ spec:
             - --cores-total=0:320
             - --memory-total=0:1280
             - --max-node-provision-time=15m
-            - --scan-interval=30s
+            - --scan-interval=60s
+            - --aws-use-static-instance-list=false
+            - --instance-types=m6i.large,m6i.xlarge,m6i.2xlarge,m6i.4xlarge
           ports:
             - containerPort: 8085
               name: metrics
@@ -78,6 +80,5 @@ spec:
         kubernetes.io/os: linux
         kubernetes.io/arch: amd64
       tolerations:
-
         - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
