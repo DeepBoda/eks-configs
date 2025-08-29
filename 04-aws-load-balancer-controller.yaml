@@ -18,18 +18,33 @@ spec:
         app.kubernetes.io/component: controller
         app.kubernetes.io/name: aws-load-balancer-controller
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
       serviceAccountName: aws-load-balancer-controller
       containers:
       - name: controller
-        image: public.ecr.aws/eks/aws-load-balancer-controller:v2.8.1
+        image: public.ecr.aws/eks/aws-load-balancer-controller:v2.7.2
         args:
         - --cluster-name=sandee
         - --ingress-class=alb
-        - --aws-vpc-id=$(AWS_VPC_ID)
+        - --aws-vpc-id=vpc-02f40ee7a414a4512
         - --aws-region=us-east-1
+        - --enable-shield=false
+        - --enable-waf=false
+        - --enable-wafv2=false
         env:
         - name: AWS_VPC_ID
           value: "vpc-02f40ee7a414a4512"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
         resources:
           requests:
             cpu: 100m

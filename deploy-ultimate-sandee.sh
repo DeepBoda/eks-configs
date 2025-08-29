@@ -133,7 +133,10 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set region=us-east-1 \
   --set vpcId=vpc-02f40ee7a414a4512 \
-  --wait --timeout=10m
+  --timeout=5m || {
+    print_error "Helm installation failed, trying manual approach..."
+    kubectl apply -f 04-aws-load-balancer-controller.yaml
+  }
 
 print_status "Deploying NGINX Ingress Controller..."
 kubectl apply -f 05-ingress-nginx.yaml

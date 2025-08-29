@@ -29,7 +29,7 @@ data:
     # Network
     bind 0.0.0.0
     protected-mode yes
-    # Password configured via environment variable
+    requirepass RedisStrongPassword123!
     port 6379
     tcp-backlog 2048
     tcp-keepalive 60
@@ -106,18 +106,7 @@ data:
     set-max-intset-entries 512
     zset-max-ziplist-entries 128
     zset-max-ziplist-value 64
----
-# Redis Secret
-apiVersion: v1
-kind: Secret
-metadata:
-  name: redis-secret
-  namespace: sandee
-  labels:
-    app: redis
-type: Opaque
-data:
-  redis-password: UmVkaXNTdHJvbmdQYXNzd29yZDEyMyE=  # RedisStrongPassword123!
+
 ---
 # Redis StatefulSet - High Performance
 apiVersion: apps/v1
@@ -199,12 +188,6 @@ spec:
         command:
         - redis-server
         - /usr/local/etc/redis/redis.conf
-        env:
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: redis-password
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -232,7 +215,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli -a $REDIS_PASSWORD ping
+            - redis-cli -a RedisStrongPassword123! ping
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
@@ -242,7 +225,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli -a $REDIS_PASSWORD ping
+            - redis-cli -a RedisStrongPassword123! ping
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3
@@ -252,7 +235,7 @@ spec:
             command:
             - sh
             - -c
-            - redis-cli -a $REDIS_PASSWORD ping
+            - redis-cli -a RedisStrongPassword123! ping
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
