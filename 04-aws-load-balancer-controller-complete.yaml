@@ -100,7 +100,6 @@ spec:
         - --ingress-class=alb
         - --aws-vpc-id=vpc-02f40ee7a414a4512
         - --aws-region=us-east-1
-        - --feature-gates=SubnetsClusterTagging=false
         env:
         - name: AWS_REGION
           value: us-east-1
