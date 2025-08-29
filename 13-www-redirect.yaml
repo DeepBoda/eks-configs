@@ -1,0 +1,33 @@
+# WWW to Non-WWW Redirect
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: www-redirect
+  namespace: sandee
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:381492033652:certificate/your-cert-id
+    alb.ingress.kubernetes.io/actions.redirect-to-eks: |
+      {
+        "type": "redirect",
+        "redirectConfig": {
+          "protocol": "HTTPS",
+          "port": "443",
+          "statusCode": "HTTP_301",
+          "host": "eks.sandee.com"
+        }
+      }
+spec:
+  rules:
+  - host: www.eks.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: redirect-to-eks
+            port:
+              name: use-annotation

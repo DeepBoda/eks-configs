@@ -1,0 +1,56 @@
+# ALB Ingress for External Traffic
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sandee-alb
+  namespace: sandee
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:381492033652:certificate/your-cert-id
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/load-balancer-attributes: routing.http2.enabled=true,idle_timeout.timeout_seconds=60
+spec:
+  rules:
+  - host: eks.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-frontend
+            port:
+              number: 80
+  - host: www.eks.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-frontend
+            port:
+              number: 80
+  - host: eks-backend.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-backend
+            port:
+              number: 8008
+  - host: eks-admin.sandee.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sandee-admin
+            port:
+              number: 3000
