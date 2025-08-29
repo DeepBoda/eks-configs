@@ -255,12 +255,14 @@ spec:
           httpGet:
             path: /
             port: 3000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
+          periodSeconds: 60
         readinessProbe:
           httpGet:
             path: /
             port: 3000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
+          periodSeconds: 30
 ---
 # Backend Deployment
 apiVersion: apps/v1
@@ -269,7 +271,7 @@ metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 8
+  replicas: 5
   selector:
     matchLabels:
       app: sandee-backend
@@ -309,11 +311,13 @@ spec:
             path: /health
             port: 8008
           initialDelaySeconds: 30
+          periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /health
             port: 8008
           initialDelaySeconds: 10
+          periodSeconds: 10
       volumes:
       - name: es-cert
         secret:
@@ -326,7 +330,7 @@ metadata:
   name: sandee-admin
   namespace: sandee-production
 spec:
-  replicas: 3
+  replicas: 0
   selector:
     matchLabels:
       app: sandee-admin
@@ -509,7 +513,7 @@ spec:
     kind: Deployment
     name: sandee-frontend
   minReplicas: 5
-  maxReplicas: 50
+  maxReplicas: 20
   metrics:
   - type: Resource
     resource:
@@ -534,8 +538,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 8
-  maxReplicas: 100
+  minReplicas: 5
+  maxReplicas: 20
   metrics:
   - type: Resource
     resource:
@@ -560,8 +564,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-admin
-  minReplicas: 3
-  maxReplicas: 20
+  minReplicas: 0
+  maxReplicas: 5
   metrics:
   - type: Resource
     resource:
