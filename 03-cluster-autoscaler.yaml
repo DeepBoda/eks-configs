@@ -47,11 +47,11 @@ spec:
             - --scale-down-delay-after-delete=10s
             - --scale-down-delay-after-failure=3m
             - --scale-down-utilization-threshold=0.5
-            - --max-nodes-total=100
-            - --cores-total=0:320
-            - --memory-total=0:1280
+            - --max-nodes-total=200
+            - --cores-total=0:800
+            - --memory-total=0:3200
             - --max-node-provision-time=15m
-            - --scan-interval=60s
+            - --scan-interval=30s
             - --aws-use-static-instance-list=false
             - --instance-types=m6i.large,m6i.xlarge,m6i.2xlarge,m6i.4xlarge
           ports:

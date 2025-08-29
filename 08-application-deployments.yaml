@@ -9,7 +9,7 @@ metadata:
     app: sandee-frontend
     component: frontend
 spec:
-  replicas: 2
+  replicas: 4
   selector:
     matchLabels:
       app: sandee-frontend
@@ -79,11 +79,11 @@ spec:
           value: "3000"
         resources:
           requests:
-            cpu: "250m"
-            memory: "512Mi"
-          limits:
-            cpu: "1"
+            cpu: "500m"
             memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "2Gi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -140,7 +140,7 @@ metadata:
     app: sandee-backend
     component: backend
 spec:
-  replicas: 3
+  replicas: 5
   selector:
     matchLabels:
       app: sandee-backend
@@ -227,11 +227,11 @@ spec:
           value: "8008"
         resources:
           requests:
-            cpu: "100m"
-            memory: "256Mi"
-          limits:
-            cpu: "500m"
+            cpu: "300m"
             memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -339,11 +339,11 @@ spec:
           value: "http://sandee-backend:8008"
         resources:
           requests:
-            cpu: "100m"
-            memory: "256Mi"
-          limits:
-            cpu: "500m"
+            cpu: "200m"
             memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
