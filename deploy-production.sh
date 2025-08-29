@@ -2,13 +2,13 @@
 
 echo "🚀 DEPLOYING SANDEE PRODUCTION APPLICATION"
 
-# 1. Deploy certificate secret first
-echo "🔐 Deploying Elasticsearch certificate..."
-kubectl apply -f elasticsearch-secret.yaml
-
-# 2. Deploy all manifests
+# 1. Deploy manifests (creates namespace first)
 echo "📦 Deploying production manifests..."
 kubectl apply -f production-manifests.yaml
+
+# 2. Deploy certificate secret after namespace exists
+echo "🔐 Deploying Elasticsearch certificate..."
+kubectl apply -f elasticsearch-secret.yaml
 
 # 2. Wait for deployments
 echo "⏳ Waiting for deployments to be ready..."
