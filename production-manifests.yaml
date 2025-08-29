@@ -243,7 +243,7 @@ spec:
         - containerPort: 3000
         env:
         - name: NEXT_PUBLIC_DEV_BASE_URL
-          value: "https://eks-backend.sandee.com"
+          value: "http://sandee-backend:8008"
         resources:
           requests:
             cpu: 1000m
