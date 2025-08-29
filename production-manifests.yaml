@@ -286,8 +286,10 @@ spec:
         ports:
         - containerPort: 8008
         env:
-        - name: REDIS_URL
-          value: "redis://redis.sandee-production.svc.cluster.local:6379"
+        - name: REDIS_HOST
+          value: "redis.sandee-production.svc.cluster.local"
+        - name: REDIS_PORT
+          value: "6379"
         - name: ELASTICSEARCH_URL
           value: "https://elasticsearch:9200"
         - name: ELASTIC_USERNAME
