@@ -1,0 +1,440 @@
+# Production Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandee-production
+  labels:
+    name: sandee-production
+---
+# GP3 Storage Classes
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-production
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "4000"
+  throughput: "250"
+  fsType: ext4
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+---
+# Redis StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: sandee-production
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis/redis-stack:7.4.0-v1
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-production
+      resources:
+        requests:
+          storage: 20Gi
+---
+# Elasticsearch StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: sandee-production
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+        env:
+        - name: discovery.type
+          value: single-node
+        - name: xpack.security.enabled
+          value: "true"
+        - name: ELASTIC_PASSWORD
+          value: "sdXBClIwLXjBHveJmqIh"
+        - name: ES_JAVA_OPTS
+          value: "-Xms1g -Xmx1g"
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        volumeMounts:
+        - name: es-data
+          mountPath: /usr/share/elasticsearch/data
+  volumeClaimTemplates:
+  - metadata:
+      name: es-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-production
+      resources:
+        requests:
+          storage: 50Gi
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-frontend
+  namespace: sandee-production
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: sandee-frontend
+  template:
+    metadata:
+      labels:
+        app: sandee-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_DEV_BASE_URL
+          value: "https://eks-backend.sandee.com"
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-backend
+  namespace: sandee-production
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: sandee-backend
+  template:
+    metadata:
+      labels:
+        app: sandee-backend
+    spec:
+      containers:
+      - name: backend
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
+        ports:
+        - containerPort: 8008
+        env:
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        - name: ELASTICSEARCH_URL
+          value: "https://elasticsearch:9200"
+        - name: ELASTIC_USERNAME
+          value: "elastic"
+        - name: ELASTIC_PASSWORD
+          value: "sdXBClIwLXjBHveJmqIh"
+        volumeMounts:
+        - name: es-cert
+          mountPath: /app/certificate.crt
+          subPath: certificate.crt
+          readOnly: true
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8008
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8008
+          initialDelaySeconds: 10
+      volumes:
+      - name: es-cert
+        secret:
+          secretName: elasticsearch-cert
+---
+# Admin Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-admin
+  namespace: sandee-production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sandee-admin
+  template:
+    metadata:
+      labels:
+        app: sandee-admin
+    spec:
+      containers:
+      - name: admin
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/admin:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+# Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: sandee-production
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: sandee-production
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+  - port: 9200
+    targetPort: 9200
+  - port: 9300
+    targetPort: 9300
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-frontend
+  namespace: sandee-production
+spec:
+  selector:
+    app: sandee-frontend
+  ports:
+  - port: 80
+    targetPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-backend
+  namespace: sandee-production
+spec:
+  selector:
+    app: sandee-backend
+  ports:
+  - port: 8008
+    targetPort: 8008
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-admin
+  namespace: sandee-production
+spec:
+  selector:
+    app: sandee-admin
+  ports:
+  - port: 3000
+    targetPort: 3000
+---
+# Production LoadBalancers
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-frontend-lb
+  namespace: sandee-production
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: sandee-frontend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-backend-lb
+  namespace: sandee-production
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8008
+    targetPort: 8008
+    protocol: TCP
+  selector:
+    app: sandee-backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-admin-lb
+  namespace: sandee-production
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: sandee-admin
+---
+# HPA Configurations
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-frontend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-frontend
+  minReplicas: 5
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-backend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-backend
+  minReplicas: 8
+  maxReplicas: 100
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 65
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-admin-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-admin
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
