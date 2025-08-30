@@ -135,7 +135,7 @@ metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 5
+  replicas: 6
   selector:
     matchLabels:
       app: sandee-frontend
@@ -179,7 +179,7 @@ metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 5
+  replicas: 6
   selector:
     matchLabels:
       app: sandee-backend
@@ -232,35 +232,35 @@ spec:
       - name: es-cert
         secret:
           secretName: elasticsearch-cert
-# ---
-# # Admin Deployment
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   name: sandee-admin
-#   namespace: sandee-production
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       app: sandee-admin
-#   template:
-#     metadata:
-#       labels:
-#         app: sandee-admin
-#     spec:
-#       containers:
-#       - name: admin
-#         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/admin:latest
-#         ports:
-#         - containerPort: 3000
-#         resources:
-#           requests:
-#             cpu: 500m
-#             memory: 512Mi
-#           limits:
-#             cpu: 1000m
-#             memory: 1Gi
+---
+# Admin Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-admin
+  namespace: sandee-production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sandee-admin
+  template:
+    metadata:
+      labels:
+        app: sandee-admin
+    spec:
+      containers:
+      - name: admin
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/admin:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
 ---
 # Services
 # Redis Service
@@ -321,17 +321,17 @@ spec:
   - port: 8008
     targetPort: 8008
 ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: sandee-admin
-#   namespace: sandee-production
-# spec:
-#   selector:
-#     app: sandee-admin
-#   ports:
-#   - port: 3000
-#     targetPort: 3000
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandee-admin
+  namespace: sandee-production
+spec:
+  selector:
+    app: sandee-admin
+  ports:
+  - port: 3000
+    targetPort: 3000
 ---
 # Frontend ALB Ingress
 apiVersion: networking.k8s.io/v1
@@ -442,8 +442,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 4
-  maxReplicas: 10
+  minReplicas: 6
+  maxReplicas: 12
   metrics:
   - type: Resource
     resource:
@@ -468,8 +468,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 4
-  maxReplicas: 15
+  minReplicas: 6
+  maxReplicas: 18
   metrics:
   - type: Resource
     resource:
