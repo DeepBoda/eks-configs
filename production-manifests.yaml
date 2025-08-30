@@ -43,20 +43,9 @@ spec:
         ports:
         - containerPort: 6379
         - containerPort: 8001
-        command:
-        - redis-server
-        - --appendonly
-        - "yes"
-        - --maxmemory
-        - "4gb"
-        - --maxmemory-policy
-        - "volatile-lru"
-        - --bind
-        - "0.0.0.0"
-        - --protected-mode
-        - "no"
-        - --maxclients
-        - "65000"
+        env:
+        - name: REDIS_ARGS
+          value: "--appendonly yes --maxmemory 4gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 65000"
         resources:
           requests:
             cpu: 1000m
