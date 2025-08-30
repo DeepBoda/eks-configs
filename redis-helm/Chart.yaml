@@ -1,0 +1,6 @@
+apiVersion: v2
+name: redis-stack-helm
+description: Redis Stack with Master-Replica Setup
+type: application
+version: 1.0.0
+appVersion: "latest"

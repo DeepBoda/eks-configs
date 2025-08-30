@@ -20,7 +20,7 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis Stack Cluster (3 replicas)
+# Redis Stack - Single Pod with Persistent Storage
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -28,7 +28,7 @@ metadata:
   namespace: sandee-production
 spec:
   serviceName: redis
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: redis
@@ -37,72 +37,46 @@ spec:
       labels:
         app: redis
     spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - redis
-              topologyKey: kubernetes.io/hostname
       containers:
       - name: redis
-        image: redis/redis-stack:7.4.0-v1
+        image: redis/redis-stack:latest
         ports:
         - containerPort: 6379
         - containerPort: 8001
-        env:
-        - name: REDIS_ARGS
-          value: "--appendonly yes --appendfsync no --save '' --maxclients 65000 --tcp-backlog 65535"
-        - name: REDISINSIGHT_HOST
-          value: "0.0.0.0"
-        - name: REDISINSIGHT_PORT
-          value: "8001"
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        - --maxmemory
+        - "4gb"
+        - --maxmemory-policy
+        - "volatile-lru"
+        - --bind
+        - "0.0.0.0"
+        - --protected-mode
+        - "no"
+        - --maxclients
+        - "65000"
         resources:
           requests:
-            cpu: 500m
-            memory: 2Gi
-          limits:
             cpu: 1000m
-            memory: 3Gi
+            memory: 4Gi
+          limits:
+            cpu: 2000m
+            memory: 6Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
-        - name: redis-config
-          mountPath: /usr/local/etc/redis/redis.conf
-          subPath: redis.conf
         livenessProbe:
           exec:
-            command:
-            - redis-cli
-            - ping
+            command: ["redis-cli", "ping"]
           initialDelaySeconds: 10
           periodSeconds: 3
-          timeoutSeconds: 1
         readinessProbe:
           exec:
-            command:
-            - redis-cli
-            - ping
+            command: ["redis-cli", "ping"]
           initialDelaySeconds: 2
           periodSeconds: 1
-          timeoutSeconds: 1
-        startupProbe:
-          exec:
-            command:
-            - redis-cli
-            - ping
-          initialDelaySeconds: 5
-          periodSeconds: 1
-          failureThreshold: 30
-      volumes:
-      - name: redis-config
-        configMap:
-          name: redis-config
   volumeClaimTemplates:
   - metadata:
       name: redis-data
@@ -111,62 +85,7 @@ spec:
       storageClassName: gp3-production
       resources:
         requests:
-          storage: 100Gi
----
-# Redis Configuration
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redis-config
-  namespace: sandee-production
-data:
-  redis.conf: |
-    # Ultra High Performance Config
-    maxmemory 3gb
-    maxmemory-policy volatile-lru
-    
-    # Network Optimization
-    bind 0.0.0.0
-    protected-mode no
-    port 6379
-    tcp-backlog 65535
-    tcp-keepalive 60
-    timeout 0
-    
-    # Connection Limits
-    maxclients 65000
-    
-    # Performance Tuning
-    hz 100
-    dynamic-hz yes
-    
-    # Persistence (Optimized for speed)
-    appendonly yes
-    appendfsync no
-    no-appendfsync-on-rewrite yes
-    auto-aof-rewrite-percentage 100
-    auto-aof-rewrite-min-size 64mb
-    
-    # Disable RDB for max speed
-    save ""
-    
-    # Memory Optimization
-    hash-max-ziplist-entries 512
-    hash-max-ziplist-value 64
-    list-max-ziplist-size -2
-    set-max-intset-entries 512
-    zset-max-ziplist-entries 128
-    zset-max-ziplist-value 64
-    
-    # Logging
-    loglevel warning
-    
-    # Redis Stack modules
-    loadmodule /opt/redis-stack/lib/redisearch.so
-    loadmodule /opt/redis-stack/lib/redisgraph.so
-    loadmodule /opt/redis-stack/lib/redistimeseries.so
-    loadmodule /opt/redis-stack/lib/rejson.so
-    loadmodule /opt/redis-stack/lib/redisbloom.so
+          storage: 200Gi
 ---
 # Elasticsearch StatefulSet
 apiVersion: apps/v1
@@ -286,10 +205,10 @@ spec:
         ports:
         - containerPort: 8008
         env:
-        - name: REDIS_HOST
-          value: "redis.sandee-production.svc.cluster.local"
-        - name: REDIS_PORT
-          value: "6379"
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        - name: REDIS_MASTER_URL
+          value: "redis://redis:6379"
         - name: ELASTICSEARCH_URL
           value: "https://elasticsearch:9200"
         - name: ELASTIC_USERNAME
@@ -534,8 +453,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 5
-  maxReplicas: 20
+  minReplicas: 4
+  maxReplicas: 10
   metrics:
   - type: Resource
     resource:
@@ -560,8 +479,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 5
-  maxReplicas: 20
+  minReplicas: 4
+  maxReplicas: 15
   metrics:
   - type: Resource
     resource:
