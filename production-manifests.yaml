@@ -76,7 +76,7 @@ spec:
         requests:
           storage: 200Gi
 ---
-# Elasticsearch StatefulSet
+# Elasticsearch StatefulSet - No Authentication
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -93,6 +93,9 @@ spec:
       labels:
         app: elasticsearch
     spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
@@ -100,9 +103,7 @@ spec:
         - name: discovery.type
           value: single-node
         - name: xpack.security.enabled
-          value: "true"
-        - name: ELASTIC_PASSWORD
-          value: "sdXBClIwLXjBHveJmqIh"
+          value: "false"
         - name: ES_JAVA_OPTS
           value: "-Xms2g -Xmx2g"
         ports:
@@ -118,6 +119,18 @@ spec:
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 10
   volumeClaimTemplates:
   - metadata:
       name: es-data
@@ -198,17 +211,8 @@ spec:
           value: "redis://redis:6379"
         - name: REDIS_MASTER_URL
           value: "redis://redis:6379"
-        - name: ELASTICSEARCH_URL
-          value: "https://elasticsearch:9200"
-        - name: ELASTIC_USERNAME
-          value: "elastic"
-        - name: ELASTIC_PASSWORD
-          value: "sdXBClIwLXjBHveJmqIh"
-        volumeMounts:
-        - name: es-cert
-          mountPath: /app/certificate.crt
-          subPath: certificate.crt
-          readOnly: true
+        - name: ELASTIC_URL
+          value: "http://elasticsearch:9200"
         resources:
           requests:
             cpu: 500m
@@ -228,10 +232,7 @@ spec:
             port: 8008
           initialDelaySeconds: 10
           periodSeconds: 10
-      volumes:
-      - name: es-cert
-        secret:
-          secretName: elasticsearch-cert
+
 ---
 # Admin Deployment
 apiVersion: apps/v1
