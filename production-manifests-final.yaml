@@ -45,11 +45,11 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000"
+          value: "--appendonly yes --maxmemory 4gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000"
         resources:
           requests:
-            cpu: 1000m
-            memory: 4Gi
+            cpu: 500m
+            memory: 2Gi
           limits:
             cpu: 2000m
             memory: 8Gi
@@ -105,21 +105,17 @@ spec:
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms6g -Xmx6g"
-        - name: thread_pool.search.size
-          value: "30"
-        - name: thread_pool.search.queue_size
-          value: "10000"
+          value: "-Xms2g -Xmx2g"
         ports:
         - containerPort: 9200
         - containerPort: 9300
         resources:
           requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
             cpu: 2000m
             memory: 4Gi
-          limits:
-            cpu: 4000m
-            memory: 6Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -152,7 +148,7 @@ metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 5
+  replicas: 3
   selector:
     matchLabels:
       app: sandee-frontend
@@ -170,11 +166,11 @@ spec:
         - name: NEXT_PUBLIC_DEV_BASE_URL
           value: "http://sandee-backend:8008"
         - name: NODE_OPTIONS
-          value: "--max-old-space-size=2048"
+          value: "--max-old-space-size=1024"
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
+            cpu: 100m
+            memory: 256Mi
           limits:
             cpu: 1000m
             memory: 2Gi
@@ -198,7 +194,7 @@ metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 6
+  replicas: 5
   selector:
     matchLabels:
       app: sandee-backend
@@ -220,7 +216,7 @@ spec:
         - name: ELASTIC_URL
           value: "http://10.100.230.218:9200"
         - name: NODE_OPTIONS
-          value: "--max-old-space-size=2048"
+          value: "--max-old-space-size=1024"
         - name: UV_THREADPOOL_SIZE
           value: "64"
         - name: DB_POOL_MIN
@@ -229,11 +225,11 @@ spec:
           value: "25"
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
+            cpu: 200m
+            memory: 512Mi
           limits:
             cpu: 1500m
-            memory: 3Gi
+            memory: 2Gi
         livenessProbe:
           httpGet:
             path: /health
@@ -360,16 +356,6 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:838645860193:certificate/19f0eb97-784f-4d85-bd1b-c6efabb9d8fa"
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/actions.redirect-www: |
-      {
-        "type": "redirect",
-        "redirectConfig": {
-          "protocol": "HTTPS",
-          "port": "443",
-          "host": "eks.sandee.com",
-          "statusCode": "HTTP_301"
-        }
-      }
 spec:
   ingressClassName: alb
   rules:
@@ -383,16 +369,6 @@ spec:
             name: sandee-frontend
             port:
               number: 80
-  - host: www-eks.sandee.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: redirect-www
-            port:
-              name: use-annotation
 ---
 # Backend LoadBalancer
 apiVersion: v1
@@ -429,7 +405,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 4
+  minReplicas: 3
   maxReplicas: 50
   metrics:
   - type: Resource
