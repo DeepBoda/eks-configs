@@ -91,7 +91,7 @@ spec:
         requests:
           storage: 100Gi
 ---
-# Elasticsearch Cluster - 2 Replicas for HA
+# Elasticsearch Single Node
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -99,7 +99,7 @@ metadata:
   namespace: sandee-production
 spec:
   serviceName: elasticsearch
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
@@ -146,10 +146,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: discovery.seed_hosts
-          value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch"
-        - name: cluster.initial_master_nodes
-          value: "elasticsearch-0,elasticsearch-1"
+        - name: discovery.type
+          value: "single-node"
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
@@ -697,39 +695,7 @@ spec:
   selector:
     matchLabels:
       app: sandee-backend
----
-# Redis Headless Service for StatefulSet
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-headless
-  namespace: sandee-production
-spec:
-  clusterIP: None
-  selector:
-    app: redis
-  ports:
-  - name: redis
-    port: 6379
-    targetPort: 6379
----
-# Elasticsearch Headless Service for StatefulSet
-apiVersion: v1
-kind: Service
-metadata:
-  name: elasticsearch-headless
-  namespace: sandee-production
-spec:
-  clusterIP: None
-  selector:
-    app: elasticsearch
-  ports:
-  - name: http
-    port: 9200
-    targetPort: 9200
-  - name: transport
-    port: 9300
-    targetPort: 9300
+
 ---
 # Frontend HPA - Aggressive Scaling
 apiVersion: autoscaling/v2
