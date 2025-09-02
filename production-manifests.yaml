@@ -45,7 +45,7 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000"
+          value: "--appendonly yes --maxmemory 4gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000"
         resources:
           requests:
             cpu: 1000m
@@ -96,6 +96,22 @@ spec:
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
+      initContainers:
+      - name: fix-data-permissions
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+        - |
+          if [ -f /usr/share/elasticsearch/data/nodes ]; then
+            echo "Removing ES 8.x compatibility file for ES 7.17.0"
+            rm -f /usr/share/elasticsearch/data/nodes
+          fi
+          chown -R 1000:1000 /usr/share/elasticsearch/data
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: es-data
+          mountPath: /usr/share/elasticsearch/data
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
@@ -106,6 +122,8 @@ spec:
           value: "false"
         - name: ES_JAVA_OPTS
           value: "-Xms2g -Xmx2g"
+        - name: bootstrap.memory_lock
+          value: "false"
         - name: thread_pool.search.size
           value: "30"
         - name: thread_pool.search.queue_size
