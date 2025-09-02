@@ -20,7 +20,7 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis Stack - Single Pod with Persistent Storage
+# Redis Stack - High Performance Configuration
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -45,14 +45,14 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 4gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 65000"
+          value: "--appendonly yes --maxmemory 12gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 100000 --tcp-keepalive 60 --timeout 300"
         resources:
           requests:
-            cpu: 1000m
-            memory: 4Gi
+            cpu: 3000m
+            memory: 12Gi
           limits:
-            cpu: 2000m
-            memory: 6Gi
+            cpu: 6000m
+            memory: 16Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -76,7 +76,7 @@ spec:
         requests:
           storage: 200Gi
 ---
-# Elasticsearch StatefulSet - No Authentication
+# Elasticsearch StatefulSet - High Performance
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -105,17 +105,21 @@ spec:
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms2g -Xmx2g"
+          value: "-Xms6g -Xmx6g"
+        - name: thread_pool.search.size
+          value: "30"
+        - name: thread_pool.search.queue_size
+          value: "10000"
         ports:
         - containerPort: 9200
         - containerPort: 9300
         resources:
           requests:
-            cpu: 1000m
-            memory: 2Gi
+            cpu: 3000m
+            memory: 6Gi
           limits:
-            cpu: 2000m
-            memory: 4Gi
+            cpu: 6000m
+            memory: 8Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -141,14 +145,14 @@ spec:
         requests:
           storage: 50Gi
 ---
-# Frontend Deployment
+# Frontend Deployment - High Performance
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 6
+  replicas: 10
   selector:
     matchLabels:
       app: sandee-frontend
@@ -165,13 +169,15 @@ spec:
         env:
         - name: NEXT_PUBLIC_DEV_BASE_URL
           value: "http://sandee-backend:8008"
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=2048"
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
-          limits:
-            cpu: 1500m
+            cpu: 1000m
             memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 3Gi
         livenessProbe:
           httpGet:
             path: /
@@ -185,14 +191,14 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 30
 ---
-# Backend Deployment
+# Backend Deployment - High Performance
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 6
+  replicas: 15
   selector:
     matchLabels:
       app: sandee-backend
@@ -212,14 +218,22 @@ spec:
         - name: REDIS_MASTER_URL
           value: "redis://redis:6379"
         - name: ELASTIC_URL
-          value: "http://elasticsearch:9200"
+          value: "http://10.100.230.218:9200"
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=4096"
+        - name: UV_THREADPOOL_SIZE
+          value: "128"
+        - name: DB_POOL_MIN
+          value: "10"
+        - name: DB_POOL_MAX
+          value: "50"
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
-          limits:
             cpu: 1500m
-            memory: 2Gi
+            memory: 3Gi
+          limits:
+            cpu: 3000m
+            memory: 4Gi
         livenessProbe:
           httpGet:
             path: /health
@@ -234,14 +248,14 @@ spec:
           periodSeconds: 10
 
 ---
-# Admin Deployment
+# Admin Deployment - Optimized
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-admin
   namespace: sandee-production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: sandee-admin
@@ -255,13 +269,16 @@ spec:
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/admin:latest
         ports:
         - containerPort: 3000
+        env:
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=1024"
         resources:
           requests:
-            cpu: 500m
-            memory: 512Mi
-          limits:
             cpu: 1000m
             memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
 ---
 # Services
 # Redis Service
@@ -432,7 +449,7 @@ spec:
 #   selector:
 #     app: sandee-admin
 ---
-# HPA Configurations
+# HPA Configurations - High Scale
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -443,8 +460,47 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 6
-  maxReplicas: 12
+  minReplicas: 10
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-backend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-backend
+  minReplicas: 15
+  maxReplicas: 100
   metrics:
   - type: Resource
     resource:
@@ -458,55 +514,167 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 200
+        periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+# Cluster Autoscaler ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: sandee-backend-hpa
+  name: cluster-autoscaler
+  namespace: kube-system
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::838645860193:role/AmazonEKSClusterAutoscalerRole
+---
+# Cluster Autoscaler ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-autoscaler
+rules:
+- apiGroups: [""]
+  resources: ["events", "endpoints"]
+  verbs: ["create", "patch"]
+- apiGroups: [""]
+  resources: ["pods/eviction"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["pods/status"]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  resourceNames: ["cluster-autoscaler"]
+  verbs: ["get", "update"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["watch", "list", "get", "update"]
+- apiGroups: [""]
+  resources: ["namespaces", "pods", "services", "replicationcontrollers", "persistentvolumeclaims", "persistentvolumes"]
+  verbs: ["watch", "list", "get"]
+- apiGroups: ["extensions"]
+  resources: ["replicasets", "daemonsets"]
+  verbs: ["watch", "list", "get"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["watch", "list"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets", "replicasets", "daemonsets"]
+  verbs: ["watch", "list", "get"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses", "csinodes", "csidrivers", "csistoragecapacities"]
+  verbs: ["watch", "list", "get"]
+- apiGroups: ["batch", "extensions"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "patch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resourceNames: ["cluster-autoscaler"]
+  resources: ["leases"]
+  verbs: ["get", "update"]
+---
+# Cluster Autoscaler ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-autoscaler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-autoscaler
+subjects:
+- kind: ServiceAccount
+  name: cluster-autoscaler
+  namespace: kube-system
+---
+# Cluster Autoscaler Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+spec:
+  selector:
+    matchLabels:
+      app: cluster-autoscaler
+  template:
+    metadata:
+      labels:
+        app: cluster-autoscaler
+    spec:
+      serviceAccountName: cluster-autoscaler
+      containers:
+      - image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.33.0
+        name: cluster-autoscaler
+        resources:
+          limits:
+            cpu: 100m
+            memory: 600Mi
+          requests:
+            cpu: 100m
+            memory: 600Mi
+        command:
+        - ./cluster-autoscaler
+        - --v=4
+        - --stderrthreshold=info
+        - --cloud-provider=aws
+        - --skip-nodes-with-local-storage=false
+        - --expander=least-waste
+        - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/sandee-production
+        - --balance-similar-node-groups
+        - --scale-down-enabled=true
+        - --scale-down-delay-after-add=2m
+        - --scale-down-unneeded-time=5m
+        - --max-node-provision-time=15m
+        - --scan-interval=10s
+        env:
+        - name: AWS_REGION
+          value: us-east-1
+---
+# Pod Disruption Budgets
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-frontend-pdb
   namespace: sandee-production
 spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: sandee-backend
-  minReplicas: 6
-  maxReplicas: 18
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 65
+  minAvailable: 8
+  selector:
+    matchLabels:
+      app: sandee-frontend
 ---
-# apiVersion: autoscaling/v2
-# kind: HorizontalPodAutoscaler
-# metadata:
-#   name: sandee-admin-hpa
-#   namespace: sandee-production
-# spec:
-#   scaleTargetRef:
-#     apiVersion: apps/v1
-#     kind: Deployment
-#     name: sandee-admin
-#   minReplicas: 1
-#   maxReplicas: 5
-#   metrics:
-#   - type: Resource
-#     resource:
-#       name: cpu
-#       target:
-#         type: Utilization
-#         averageUtilization: 60
-#   - type: Resource
-#     resource:
-#       name: memory
-#       target:
-#         type: Utilization
-#         averageUtilization: 75
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-backend-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 12
+  selector:
+    matchLabels:
+      app: sandee-backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-admin-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sandee-admin

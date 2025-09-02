@@ -1,0 +1,33 @@
+# Pod Disruption Budgets for High Availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-frontend-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 8
+  selector:
+    matchLabels:
+      app: sandee-frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-backend-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 12
+  selector:
+    matchLabels:
+      app: sandee-backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandee-admin-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sandee-admin
