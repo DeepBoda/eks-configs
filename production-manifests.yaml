@@ -20,7 +20,7 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis Stack - Minimal Baseline
+# Redis Cluster - 3 Replicas for HA
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -28,7 +28,7 @@ metadata:
   namespace: sandee-production
 spec:
   serviceName: redis
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: redis
@@ -37,6 +37,17 @@ spec:
       labels:
         app: redis
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: ["redis"]
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: redis
         image: redis/redis-stack:latest
@@ -45,11 +56,11 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 4gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000"
+          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 100000 --tcp-keepalive 60 --timeout 300"
         resources:
           requests:
-            cpu: 1000m
-            memory: 4Gi
+            cpu: 800m
+            memory: 6Gi
           limits:
             cpu: 2000m
             memory: 8Gi
@@ -59,13 +70,17 @@ spec:
         livenessProbe:
           exec:
             command: ["redis-cli", "ping"]
-          initialDelaySeconds: 10
-          periodSeconds: 3
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
         readinessProbe:
           exec:
             command: ["redis-cli", "ping"]
-          initialDelaySeconds: 2
-          periodSeconds: 1
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          timeoutSeconds: 2
+          failureThreshold: 2
   volumeClaimTemplates:
   - metadata:
       name: redis-data
@@ -76,7 +91,7 @@ spec:
         requests:
           storage: 100Gi
 ---
-# Elasticsearch StatefulSet - Minimal Baseline
+# Elasticsearch Cluster - 2 Replicas for HA
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -84,7 +99,7 @@ metadata:
   namespace: sandee-production
 spec:
   serviceName: elasticsearch
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: elasticsearch
@@ -96,19 +111,28 @@ spec:
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: ["elasticsearch"]
+              topologyKey: kubernetes.io/hostname
       initContainers:
       - name: fix-data-permissions
         image: busybox:1.35
         command: ['sh', '-c']
         args:
         - |
-          if [ -f /usr/share/elasticsearch/data/nodes ]; then
-            echo "Removing ES 8.x compatibility file for ES 7.17.0"
-            rm -f /usr/share/elasticsearch/data/nodes
-          fi
           chown -R 1000:1000 /usr/share/elasticsearch/data
+          sysctl -w vm.max_map_count=262144 || true
         securityContext:
           runAsUser: 0
+          privileged: true
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -116,17 +140,27 @@ spec:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
         env:
-        - name: discovery.type
-          value: single-node
+        - name: cluster.name
+          value: "sandee-cluster"
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: discovery.seed_hosts
+          value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch"
+        - name: cluster.initial_master_nodes
+          value: "elasticsearch-0,elasticsearch-1"
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms2g -Xmx2g"
+          value: "-Xms3g -Xmx3g"
         - name: bootstrap.memory_lock
           value: "false"
         - name: thread_pool.search.size
-          value: "30"
+          value: "50"
         - name: thread_pool.search.queue_size
+          value: "20000"
+        - name: indices.query.bool.max_clause_count
           value: "10000"
         ports:
         - containerPort: 9200
@@ -134,10 +168,10 @@ spec:
         resources:
           requests:
             cpu: 1000m
-            memory: 3Gi
+            memory: 4Gi
           limits:
             cpu: 2000m
-            memory: 4Gi
+            memory: 6Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -145,14 +179,18 @@ spec:
           httpGet:
             path: /_cluster/health
             port: 9200
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90
           periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /_cluster/health
+            path: /_cluster/health?wait_for_status=yellow&timeout=5s
             port: 9200
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
   volumeClaimTemplates:
   - metadata:
       name: es-data
@@ -161,16 +199,16 @@ spec:
       storageClassName: gp3-production
       resources:
         requests:
-          storage: 50Gi
+          storage: 100Gi
 ---
-# Frontend Deployment - Minimal Start, Smart Scale
+# Frontend Deployment - High Load Ready
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 5
+  replicas: 8
   selector:
     matchLabels:
       app: sandee-frontend
@@ -209,14 +247,14 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 30
 ---
-# Backend Deployment - Minimal Start, Smart Scale
+# Backend Deployment - High Load Ready
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 6
+  replicas: 10
   selector:
     matchLabels:
       app: sandee-backend
@@ -235,6 +273,8 @@ spec:
           value: "redis://redis:6379"
         - name: REDIS_MASTER_URL
           value: "redis://redis:6379"
+        - name: REDIS_CLUSTER_NODES
+          value: "redis-0.redis:6379,redis-1.redis:6379,redis-2.redis:6379"
         - name: ELASTIC_URL
           value: "http://10.100.230.218:9200"
         - name: NODE_OPTIONS
@@ -652,6 +692,164 @@ metadata:
   namespace: sandee-production
 spec:
   minAvailable: 3
+  selector:
+    matchLabels:
+      app: sandee-backend
+---
+# Redis Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: sandee-production
+spec:
+  clusterIP: None
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+---
+# Elasticsearch Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-headless
+  namespace: sandee-production
+spec:
+  clusterIP: None
+  selector:
+    app: elasticsearch
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+  - name: transport
+    port: 9300
+    targetPort: 9300
+---
+# Frontend HPA - Aggressive Scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-frontend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-frontend
+  minReplicas: 8
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+---
+# Backend HPA - Aggressive Scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-backend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-backend
+  minReplicas: 10
+  maxReplicas: 100
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 65
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 15
+      policies:
+      - type: Percent
+        value: 200
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+---
+# Pod Disruption Budgets
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: elasticsearch-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 4
+  selector:
+    matchLabels:
+      app: sandee-frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+  namespace: sandee-production
+spec:
+  minAvailable: 5
   selector:
     matchLabels:
       app: sandee-backend
