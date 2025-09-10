@@ -43,9 +43,18 @@ spec:
                 matchLabels:
                   app: redis
               topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: redis
         image: redis/redis-stack:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
         ports:
         - containerPort: 6379
         - containerPort: 8001
@@ -63,13 +72,11 @@ spec:
         - name: redis-data
           mountPath: /data
         livenessProbe:
-          exec:
-            command: ["redis-cli", "ping"]
+          exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 20
           periodSeconds: 10
         readinessProbe:
-          exec:
-            command: ["redis-cli", "ping"]
+          exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 10
           periodSeconds: 5
   volumeClaimTemplates:
@@ -102,6 +109,9 @@ spec:
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
       - name: increase-vm-max-map-count
         image: busybox
@@ -111,13 +121,18 @@ spec:
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
         env:
         - name: discovery.type
           value: single-node
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms4g -Xmx4g" # Increased memory
+          value: "-Xms4g -Xmx4g"
         - name: index.number_of_replicas
           value: "0"
         ports:
@@ -134,15 +149,11 @@ spec:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
         livenessProbe:
-          httpGet:
-            path: /_cluster/health
-            port: 9200
+          httpGet: { path: /_cluster/health, port: 9200 }
           initialDelaySeconds: 90
           periodSeconds: 30
         readinessProbe:
-          httpGet:
-            path: /_cluster/health
-            port: 9200
+          httpGet: { path: /_cluster/health, port: 9200 }
           initialDelaySeconds: 60
           periodSeconds: 15
   volumeClaimTemplates:
@@ -163,6 +174,7 @@ metadata:
   namespace: sandee-production
 spec:
   replicas: 6
+  revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -177,6 +189,10 @@ spec:
         app: sandee-frontend
     spec:
       terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
@@ -196,6 +212,11 @@ spec:
       containers:
       - name: frontend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
         ports:
         - containerPort: 3000
         env:
@@ -210,16 +231,19 @@ spec:
           limits:
             cpu: "1"
             memory: 2Gi
+        lifecycle:
+          preStop:
+            exec: { command: ["sh", "-c", "sleep 10"] }
+        startupProbe:
+          httpGet: { path: /health, port: 3000 }
+          failureThreshold: 30
+          periodSeconds: 2
         livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
+          httpGet: { path: /health, port: 3000 }
           initialDelaySeconds: 40
           periodSeconds: 20
         readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
+          httpGet: { path: /health, port: 3000 }
           initialDelaySeconds: 20
           periodSeconds: 10
 ---
@@ -231,6 +255,7 @@ metadata:
   namespace: sandee-production
 spec:
   replicas: 6
+  revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -245,6 +270,10 @@ spec:
         app: sandee-backend
     spec:
       terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
@@ -264,6 +293,11 @@ spec:
       containers:
       - name: backend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
         ports:
         - containerPort: 8008
         env:
@@ -282,28 +316,21 @@ spec:
             cpu: 400m
             memory: 1Gi
           limits:
-            cpu: 1500m
+            cpu: "1500m"
             memory: 3Gi
         lifecycle:
           preStop:
-            exec:
-              command: ["sh", "-c", "sleep 10"]
+            exec: { command: ["sh", "-c", "sleep 10"] }
         startupProbe:
-          httpGet:
-            path: /health
-            port: 8008
+          httpGet: { path: /health, port: 8008 }
           failureThreshold: 30
           periodSeconds: 2
         livenessProbe:
-          httpGet:
-            path: /health
-            port: 8008
+          httpGet: { path: /health, port: 8008 }
           initialDelaySeconds: 40
           periodSeconds: 20
         readinessProbe:
-          httpGet:
-            path: /health
-            port: 8008
+          httpGet: { path: /health, port: 8008 }
           initialDelaySeconds: 10
           periodSeconds: 5
 ---
@@ -364,7 +391,7 @@ spec:
   - port: 8008
     targetPort: 8008
 ---
-# Frontend Ingress
+# Frontend Ingress (ALB tuned)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -386,6 +413,8 @@ metadata:
           "statusCode": "HTTP_301"
         }
       }
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120
+    alb.ingress.kubernetes.io/compression: 'true'
 spec:
   ingressClassName: alb
   rules:
@@ -410,7 +439,7 @@ spec:
             port:
               name: use-annotation
 ---
-# Backend Ingress
+# Backend Ingress (ALB tuned)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -425,6 +454,8 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120
+    alb.ingress.kubernetes.io/compression: 'true'
 spec:
   ingressClassName: alb
   rules:
@@ -459,6 +490,12 @@ spec:
       target:
         type: Utilization
         averageUtilization: 65
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 15
