@@ -233,7 +233,7 @@ metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 4 # Adjusted for node capacity
+  replicas: 9 # Increased replicas as requested
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -470,7 +470,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 4
+  minReplicas: 9
   maxReplicas: 120
   metrics:
   - type: Resource
