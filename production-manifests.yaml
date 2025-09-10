@@ -85,7 +85,7 @@ spec:
         requests:
           storage: 100Gi
 ---
-# Elasticsearch Single Node - Optimized
+# Elasticsearch HA Cluster - Optimized
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -93,7 +93,7 @@ metadata:
   namespace: sandee-production
 spec:
   serviceName: elasticsearch
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: elasticsearch
@@ -121,14 +121,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: discovery.type
-          value: "single-node"
+        - name: discovery.seed_hosts
+          value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch,elasticsearch-2.elasticsearch"
+        - name: cluster.initial_master_nodes
+          value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
           value: "-Xms4g -Xmx4g" # Increased memory
         - name: index.number_of_replicas
-          value: "0"
+          value: "1"
         ports:
         - containerPort: 9200
         - containerPort: 9300
@@ -171,7 +173,7 @@ metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 9 # Adjusted for node capacity
+  replicas: 6 # Adjusted for node capacity
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -186,17 +188,22 @@ spec:
         app: sandee-frontend
     spec:
       terminationGracePeriodSeconds: 60
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: sandee-frontend
       affinity:
         podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values: ["sandee-frontend"]
-              topologyKey: "kubernetes.io/hostname"
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values: ["sandee-frontend"]
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - name: frontend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
@@ -209,22 +216,33 @@ spec:
           value: "--max-old-space-size=2048"
         resources:
           requests:
-            cpu: "1"
-            memory: 1.5Gi
+            cpu: "500m"
+            memory: 1Gi
           limits:
-            memory: 3Gi
+            cpu: "1"
+            memory: 2Gi
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "-c", "sleep 15"]
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          failureThreshold: 30
+          periodSeconds: 2
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 3000
           initialDelaySeconds: 60
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 3000
-          initialDelaySeconds: 45
-          periodSeconds: 10
+          initialDelaySeconds: 5
+          periodSeconds: 5
 ---
 # Backend Deployment - Tuned for High RPS
 apiVersion: apps/v1
@@ -233,7 +251,7 @@ metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 9 # Increased replicas as requested
+  replicas: 6 # Increased replicas as requested
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -248,17 +266,22 @@ spec:
         app: sandee-backend
     spec:
       terminationGracePeriodSeconds: 60
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: sandee-backend
       affinity:
         podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values: ["sandee-backend"]
-              topologyKey: "kubernetes.io/hostname"
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values: ["sandee-backend"]
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - name: backend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
@@ -277,22 +300,33 @@ spec:
           value: "--max-old-space-size=2048"
         resources:
           requests:
-            cpu: "1"
-            memory: 2Gi
+            cpu: "600m"
+            memory: 1.5Gi
           limits:
-            memory: 4Gi
+            cpu: "1.5"
+            memory: 3Gi
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "-c", "sleep 15"]
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8008
+          failureThreshold: 30
+          periodSeconds: 2
         livenessProbe:
           httpGet:
             path: /health
             port: 8008
-          initialDelaySeconds: 45
+          initialDelaySeconds: 60
           periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /health
             port: 8008
-          initialDelaySeconds: 20
-          periodSeconds: 10
+          initialDelaySeconds: 5
+          periodSeconds: 5
 ---
 # Services
 apiVersion: v1
@@ -437,7 +471,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 9
+  minReplicas: 6
   maxReplicas: 80
   metrics:
   - type: Resource
@@ -470,7 +504,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 9
+  minReplicas: 6
   maxReplicas: 120
   metrics:
   - type: Resource
@@ -479,6 +513,12 @@ spec:
       target:
         type: Utilization
         averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 15
@@ -511,7 +551,7 @@ metadata:
   name: elasticsearch-pdb
   namespace: sandee-production
 spec:
-  minAvailable: 1 # PDB for single replica must be minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: elasticsearch
