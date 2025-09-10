@@ -1,10 +1,9 @@
-# FINAL PRODUCTION MANIFEST - UPGRADED FOR HIGH AVAILABILITY
 apiVersion: v1
 kind: Namespace
 metadata:
   name: sandee-production
 ---
-# GP3 Storage Class - Optimized for high performance
+# GP3 Storage Class
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -18,7 +17,7 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis Cluster - 3 Replicas HA (Existing configuration is solid)
+# Redis Cluster
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -41,11 +40,9 @@ spec:
           - weight: 100
             podAffinityTerm:
               labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values: ["redis"]
-              topologyKey: "kubernetes.io/hostname"
+                matchLabels:
+                  app: redis
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: redis
         image: redis/redis-stack:latest
@@ -57,8 +54,8 @@ spec:
           value: "--appendonly yes --maxmemory 6gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 100000"
         resources:
           requests:
-            cpu: "1"
-            memory: 6Gi
+            cpu: 500m
+            memory: 5Gi
           limits:
             cpu: "2"
             memory: 8Gi
@@ -69,12 +66,12 @@ spec:
           exec:
             command: ["redis-cli", "ping"]
           initialDelaySeconds: 20
-          periodSeconds: 5
+          periodSeconds: 10
         readinessProbe:
           exec:
             command: ["redis-cli", "ping"]
           initialDelaySeconds: 10
-          periodSeconds: 2
+          periodSeconds: 5
   volumeClaimTemplates:
   - metadata:
       name: redis-data
@@ -85,7 +82,7 @@ spec:
         requests:
           storage: 100Gi
 ---
-# Elasticsearch Single Node - Optimized
+# Elasticsearch (single node)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -115,14 +112,8 @@ spec:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
         env:
-        - name: cluster.name
-          value: "sandee-cluster"
-        - name: node.name
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: discovery.type
-          value: "single-node"
+          value: single-node
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
@@ -134,10 +125,10 @@ spec:
         - containerPort: 9300
         resources:
           requests:
-            cpu: "2"
-            memory: 6Gi
+            cpu: 1
+            memory: 5Gi
           limits:
-            cpu: "4"
+            cpu: 2
             memory: 8Gi
         volumeMounts:
         - name: es-data
@@ -146,13 +137,13 @@ spec:
           httpGet:
             path: /_cluster/health
             port: 9200
-          initialDelaySeconds: 120
+          initialDelaySeconds: 90
           periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /_cluster/health
             port: 9200
-          initialDelaySeconds: 90
+          initialDelaySeconds: 60
           periodSeconds: 15
   volumeClaimTemplates:
   - metadata:
@@ -164,19 +155,19 @@ spec:
         requests:
           storage: 100Gi
 ---
-# Frontend Deployment - Tuned for High RPS
+# Frontend Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 6 # Adjusted for node capacity
+  replicas: 6
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 0 # Zero downtime rollouts
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: sandee-frontend
@@ -185,7 +176,7 @@ spec:
       labels:
         app: sandee-frontend
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 45
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
@@ -195,13 +186,13 @@ spec:
             app: sandee-frontend
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values: ["sandee-frontend"]
-            topologyKey: "kubernetes.io/hostname"
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: sandee-frontend
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: frontend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
@@ -214,37 +205,37 @@ spec:
           value: "--max-old-space-size=2048"
         resources:
           requests:
-            cpu: "500m"
-            memory: 1.5Gi
+            cpu: 300m
+            memory: 768Mi
           limits:
             cpu: "1"
-            memory: 3Gi
+            memory: 2Gi
         livenessProbe:
           httpGet:
             path: /
             port: 3000
-          initialDelaySeconds: 60
-          periodSeconds: 30
+          initialDelaySeconds: 40
+          periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /
             port: 3000
-          initialDelaySeconds: 45
+          initialDelaySeconds: 20
           periodSeconds: 10
 ---
-# Backend Deployment - Tuned for High RPS
+# Backend Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 6 # Increased replicas as requested
+  replicas: 6
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 0 # Zero downtime rollouts
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: sandee-backend
@@ -253,7 +244,7 @@ spec:
       labels:
         app: sandee-backend
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 45
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
@@ -263,13 +254,13 @@ spec:
             app: sandee-backend
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values: ["sandee-backend"]
-            topologyKey: "kubernetes.io/hostname"
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: sandee-backend
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: backend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
@@ -277,26 +268,26 @@ spec:
         - containerPort: 8008
         env:
         - name: REDIS_URL
-          value: "redis://redis:6379"
+          value: redis://redis:6379
         - name: REDIS_MASTER_URL
-          value: "redis://redis:6379"
+          value: redis://redis:6379
         - name: REDIS_CLUSTER_NODES
-          value: "redis-0.redis:6379,redis-1.redis:6379,redis-2.redis:6379"
+          value: redis-0.redis:6379,redis-1.redis:6379,redis-2.redis:6379
         - name: ELASTIC_URL
-          value: "http://elasticsearch:9200"
+          value: http://elasticsearch:9200
         - name: NODE_OPTIONS
           value: "--max-old-space-size=2048"
         resources:
           requests:
-            cpu: "1"
-            memory: 2Gi
+            cpu: 400m
+            memory: 1Gi
           limits:
-            cpu: "1.5"
+            cpu: 1500m
             memory: 3Gi
         lifecycle:
           preStop:
             exec:
-              command: ["sh", "-c", "sleep 15"]
+              command: ["sh", "-c", "sleep 10"]
         startupProbe:
           httpGet:
             path: /health
@@ -307,13 +298,13 @@ spec:
           httpGet:
             path: /health
             port: 8008
-          initialDelaySeconds: 60
-          periodSeconds: 30
+          initialDelaySeconds: 40
+          periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /health
             port: 8008
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 5
 ---
 # Services
@@ -373,7 +364,7 @@ spec:
   - port: 8008
     targetPort: 8008
 ---
-# Frontend ALB Ingress - With Security Headers
+# Frontend Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -419,7 +410,7 @@ spec:
             port:
               name: use-annotation
 ---
-# Backend ALB Ingress - With Security Headers
+# Backend Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -448,7 +439,7 @@ spec:
             port:
               number: 8008
 ---
-# HPA - Aggressive & Responsive Auto-scaling
+# HPAs
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -521,7 +512,7 @@ spec:
         value: 5
         periodSeconds: 60
 ---
-# Pod Disruption Budgets - Ensuring High Availability
+# Pod Disruption Budgets
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -539,7 +530,7 @@ metadata:
   name: elasticsearch-pdb
   namespace: sandee-production
 spec:
-  maxUnavailable: 1
+  minAvailable: 1
   selector:
     matchLabels:
       app: elasticsearch
