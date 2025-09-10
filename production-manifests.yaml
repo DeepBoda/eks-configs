@@ -85,7 +85,7 @@ spec:
         requests:
           storage: 100Gi
 ---
-# Elasticsearch HA Cluster - Optimized
+# Elasticsearch Single Node - Optimized
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -93,7 +93,7 @@ metadata:
   namespace: sandee-production
 spec:
   serviceName: elasticsearch
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
@@ -121,16 +121,14 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: discovery.seed_hosts
-          value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch,elasticsearch-2.elasticsearch"
-        - name: cluster.initial_master_nodes
-          value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+        - name: discovery.type
+          value: "single-node"
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
           value: "-Xms4g -Xmx4g" # Increased memory
         - name: index.number_of_replicas
-          value: "1"
+          value: "0"
         ports:
         - containerPort: 9200
         - containerPort: 9300
@@ -217,32 +215,22 @@ spec:
         resources:
           requests:
             cpu: "500m"
-            memory: 1Gi
+            memory: 1.5Gi
           limits:
             cpu: "1"
-            memory: 2Gi
-        lifecycle:
-          preStop:
-            exec:
-              command: ["sh", "-c", "sleep 15"]
-        startupProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          failureThreshold: 30
-          periodSeconds: 2
+            memory: 3Gi
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 3000
           initialDelaySeconds: 60
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          initialDelaySeconds: 45
+          periodSeconds: 10
 ---
 # Backend Deployment - Tuned for High RPS
 apiVersion: apps/v1
@@ -300,8 +288,8 @@ spec:
           value: "--max-old-space-size=2048"
         resources:
           requests:
-            cpu: "600m"
-            memory: 1.5Gi
+            cpu: "1"
+            memory: 2Gi
           limits:
             cpu: "1.5"
             memory: 3Gi
