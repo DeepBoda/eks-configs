@@ -190,7 +190,6 @@ spec:
     spec:
       terminationGracePeriodSeconds: 45
       securityContext:
-        runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
       topologySpreadConstraints:
@@ -271,7 +270,6 @@ spec:
     spec:
       terminationGracePeriodSeconds: 45
       securityContext:
-        runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
       topologySpreadConstraints:
