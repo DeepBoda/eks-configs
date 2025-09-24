@@ -173,7 +173,7 @@ metadata:
   name: sandee-frontend
   namespace: sandee-production
 spec:
-  replicas: 6
+  replicas: 8
   revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
@@ -211,7 +211,7 @@ spec:
       containers:
       - name: frontend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -253,7 +253,7 @@ metadata:
   name: sandee-backend
   namespace: sandee-production
 spec:
-  replicas: 6
+  replicas: 8
   revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
@@ -291,7 +291,7 @@ spec:
       containers:
       - name: backend
         image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -479,7 +479,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 6
+  minReplicas: 8
   maxReplicas: 80
   metrics:
   - type: Resource
@@ -518,7 +518,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 6
+  minReplicas: 8
   maxReplicas: 120
   metrics:
   - type: Resource
