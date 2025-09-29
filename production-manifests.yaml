@@ -64,9 +64,6 @@ spec:
             app: redis
       securityContext:
         runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -77,8 +74,6 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities: { drop: ["ALL"] }
-          runAsNonRoot: true
-          runAsUser: 999
         ports:
         - containerPort: 6379
           name: redis
@@ -88,7 +83,7 @@ spec:
           protocol: TCP
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 2560mb --maxmemory-policy allkeys-lru"
+          value: "--appendonly yes --appendfsync everysec --maxmemory 8gb --maxmemory-policy allkeys-lru --save '' --tcp-keepalive 60 --timeout 0 --maxclients 10000"
         - name: REDIS_REPLICATION_MODE
           value: master
         resources:
