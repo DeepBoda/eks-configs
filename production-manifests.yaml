@@ -15,7 +15,6 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis Cluster
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -25,7 +24,7 @@ metadata:
     app: redis
 spec:
   serviceName: redis
-  replicas: 3  # One Redis per node for maximum performance
+  replicas: 3
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -42,7 +41,7 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:  # Stronger anti-affinity
+          requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchLabels:
                 app: redis
@@ -63,17 +62,19 @@ spec:
           matchLabels:
             app: redis
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false    # Full access
+        runAsUser: 0
+        fsGroup: 0
         seccompProfile:
           type: RuntimeDefault
       containers:
       - name: redis
-        image: redis/redis-stack:7.2.0-v9  # Pinned version for stability
+        image: redis/redis-stack:7.2.0-v9
         imagePullPolicy: IfNotPresent
         securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities: { drop: ["ALL"] }
+          allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
+          capabilities: {}      # Full capabilities
         ports:
         - containerPort: 6379
           name: redis
@@ -88,11 +89,11 @@ spec:
           value: master
         resources:
           requests:
-            cpu: 600m
-            memory: 2Gi
+            cpu: 1
+            memory: 4Gi
           limits:
-            cpu: "1"
-            memory: 3Gi
+            cpu: "2"
+            memory: 8Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -102,14 +103,14 @@ spec:
           mountPath: /usr/local/etc/redis
         livenessProbe:
           exec: { command: ["redis-cli", "--raw", "incr", "ping"] }
-          initialDelaySeconds: 15  # Reduced for faster detection
-          periodSeconds: 5         # More frequent checks
+          initialDelaySeconds: 10
+          periodSeconds: 5
           timeoutSeconds: 3
-          failureThreshold: 3
+          failureThreshold: 5
         readinessProbe:
           exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 5   # Reduced for faster readiness
-          periodSeconds: 2         # More frequent checks
+          initialDelaySeconds: 5
+          periodSeconds: 2
           timeoutSeconds: 2
           failureThreshold: 2
         startupProbe:
@@ -123,7 +124,7 @@ spec:
         emptyDir: {}
       - name: redis-config
         emptyDir: {}
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 60
   volumeClaimTemplates:
   - metadata:
       name: redis-data
@@ -135,7 +136,7 @@ spec:
       storageClassName: gp3-simple
       resources:
         requests:
-          storage: 200Gi  # Increased from 100Gi for better performance
+          storage: 100Gi   # Big enough for persistent high-speed usage
 ---
 # High-Availability Elasticsearch Cluster - Optimized for Performance and Resilience
 apiVersion: apps/v1
