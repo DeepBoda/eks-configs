@@ -1,0 +1,254 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandee-production
+---
+# Optimized Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-frontend
+  namespace: sandee-production
+spec:
+  replicas: 12  # Increased from 8
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%  # Faster deployments
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sandee-frontend
+  template:
+    metadata:
+      labels:
+        app: sandee-frontend
+    spec:
+      terminationGracePeriodSeconds: 30  # Reduced from 45
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: sandee-frontend
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: sandee-frontend
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: frontend
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_DEV_BASE_URL
+          value: "http://sandee-backend:8008"
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=3072"  # Increased
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            cpu: 800m      # Increased from 300m
+            memory: 1.5Gi  # Increased from 768Mi
+          limits:
+            cpu: "2"       # Increased from 1
+            memory: 4Gi    # Increased from 2Gi
+        lifecycle:
+          preStop:
+            exec: { command: ["sh", "-c", "sleep 5"] }  # Reduced
+        startupProbe:
+          httpGet: { path: /health, port: 3000 }
+          failureThreshold: 20  # Reduced from 30
+          periodSeconds: 2
+        livenessProbe:
+          httpGet: { path: /health, port: 3000 }
+          initialDelaySeconds: 30  # Reduced from 40
+          periodSeconds: 15        # Reduced from 20
+        readinessProbe:
+          httpGet: { path: /health, port: 3000 }
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# Optimized Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandee-backend
+  namespace: sandee-production
+spec:
+  replicas: 12  # Increased from 8
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sandee-backend
+  template:
+    metadata:
+      labels:
+        app: sandee-backend
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: sandee-backend
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: sandee-backend
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: backend
+        image: 838645860193.dkr.ecr.us-east-1.amazonaws.com/backend:latest
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
+        ports:
+        - containerPort: 8008
+        env:
+        - name: REDIS_URL
+          value: redis://redis:6379
+        - name: REDIS_MASTER_URL
+          value: redis://redis:6379
+        - name: REDIS_CLUSTER_NODES
+          value: redis-0.redis:6379,redis-1.redis:6379,redis-2.redis:6379
+        - name: ELASTIC_URL
+          value: http://elasticsearch:9200
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=3072"  # Increased
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            cpu: 1000m     # Increased from 400m
+            memory: 2Gi    # Increased from 1Gi
+          limits:
+            cpu: "3"       # Increased from 1500m
+            memory: 6Gi    # Increased from 3Gi
+        lifecycle:
+          preStop:
+            exec: { command: ["sh", "-c", "sleep 5"] }
+        startupProbe:
+          httpGet: { path: /health, port: 8008 }
+          failureThreshold: 20
+          periodSeconds: 2
+        livenessProbe:
+          httpGet: { path: /health, port: 8008 }
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        readinessProbe:
+          httpGet: { path: /health, port: 8008 }
+          initialDelaySeconds: 5  # Reduced from 10
+          periodSeconds: 3        # Reduced from 5
+---
+# Optimized Frontend HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-frontend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-frontend
+  minReplicas: 12
+  maxReplicas: 100  # Increased from 80
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 45  # Reduced from 65
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 60  # Reduced from 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 10  # Reduced from 15
+      policies:
+      - type: Percent
+        value: 200  # Increased from 100
+        periodSeconds: 10  # Reduced from 15
+    scaleDown:
+      stabilizationWindowSeconds: 180  # Reduced from 300
+      policies:
+      - type: Pods
+        value: 3  # Reduced from 5
+        periodSeconds: 30  # Reduced from 60
+---
+# Optimized Backend HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandee-backend-hpa
+  namespace: sandee-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sandee-backend
+  minReplicas: 12
+  maxReplicas: 150  # Increased from 120
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 40  # Reduced from 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 60  # Reduced from 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 10
+      policies:
+      - type: Percent
+        value: 200
+        periodSeconds: 10
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+      - type: Pods
+        value: 3
+        periodSeconds: 30

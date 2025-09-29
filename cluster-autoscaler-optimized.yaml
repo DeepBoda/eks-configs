@@ -1,0 +1,113 @@
+# Optimized Cluster Autoscaler for High Performance
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-autoscaler
+  template:
+    metadata:
+      labels:
+        app: cluster-autoscaler
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccountName: cluster-autoscaler
+      containers:
+        - name: cluster-autoscaler
+          image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.30.1
+          resources:
+            limits:
+              cpu: 200m      # Increased from 100m
+              memory: 1Gi    # Increased from 600Mi
+            requests:
+              cpu: 200m
+              memory: 1Gi
+          command:
+            - ./cluster-autoscaler
+            - --v=2                    # Reduced verbosity
+            - --stderrthreshold=info
+            - --cloud-provider=aws
+            - --cluster-name=sandee-production
+            - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/sandee-production
+            - --balance-similar-node-groups=true
+            - --skip-nodes-with-local-storage=false
+            - --skip-nodes-with-system-pods=false
+            - --expander=priority      # Changed from least-waste for better performance
+            - --scale-down-enabled=true
+            - --scale-down-delay-after-add=5m      # Reduced from 10m
+            - --scale-down-unneeded-time=5m        # Reduced from 10m
+            - --scale-down-delay-after-delete=5s   # Reduced from 10s
+            - --scale-down-delay-after-failure=1m  # Reduced from 3m
+            - --scale-down-utilization-threshold=0.4  # Reduced from 0.5
+            - --max-nodes-total=300               # Increased from 200
+            - --cores-total=0:1200               # Increased from 800
+            - --memory-total=0:4800              # Increased from 3200
+            - --max-node-provision-time=10m      # Reduced from 15m
+            - --scan-interval=10s                # Reduced from 30s
+            - --aws-use-static-instance-list=false
+            - --instance-types=m6i.xlarge,m6i.2xlarge,m6i.4xlarge,m6i.8xlarge  # Added larger instances
+            - --new-pod-scale-up-delay=5s        # Faster scaling
+            - --max-empty-bulk-delete=20         # Faster scale down
+            - --max-graceful-termination-sec=300 # Faster termination
+          ports:
+            - containerPort: 8085
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health-check
+              port: 8085
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: 8085
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 3
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+---
+# Priority Class for Cluster Autoscaler Expansion
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: cluster-autoscaler-priority
+value: 1000
+globalDefault: false
+description: "Priority class for cluster autoscaler expansion decisions"
+---
+# ConfigMap for Cluster Autoscaler Priority Expander
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-autoscaler-status
+  namespace: kube-system
+data:
+  priorities: |-
+    10:
+      - .*m6i\.8xlarge.*
+      - .*m6i\.4xlarge.*
+    5:
+      - .*m6i\.2xlarge.*
+    1:
+      - .*m6i\.xlarge.*

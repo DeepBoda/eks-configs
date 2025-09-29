@@ -1,0 +1,220 @@
+# High-Performance Redis Configuration
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: sandee-production
+spec:
+  serviceName: redis
+  replicas: 5  # Increased from 3 for better distribution
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: redis
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: redis
+        image: redis/redis-stack:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
+        ports:
+        - containerPort: 6379
+        - containerPort: 8001
+        env:
+        - name: REDIS_ARGS
+          value: "--appendonly yes --maxmemory 12gb --maxmemory-policy allkeys-lru --bind 0.0.0.0 --protected-mode no --maxclients 200000 --tcp-keepalive 60 --tcp-backlog 2048"
+        resources:
+          requests:
+            cpu: 1000m      # Increased from 500m
+            memory: 10Gi    # Increased from 5Gi
+          limits:
+            cpu: "3"        # Increased from 2
+            memory: 16Gi    # Increased from 8Gi
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        livenessProbe:
+          exec: { command: ["redis-cli", "ping"] }
+          initialDelaySeconds: 15  # Reduced from 20
+          periodSeconds: 5         # Reduced from 10
+        readinessProbe:
+          exec: { command: ["redis-cli", "ping"] }
+          initialDelaySeconds: 5   # Reduced from 10
+          periodSeconds: 3         # Reduced from 5
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-production
+      resources:
+        requests:
+          storage: 200Gi  # Increased from 100Gi
+---
+# Optimized Elasticsearch with Multiple Replicas
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: sandee-production
+spec:
+  serviceName: elasticsearch
+  replicas: 3  # Increased from 1 for better performance
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: elasticsearch
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: increase-vm-max-map-count
+        image: busybox
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
+        env:
+        - name: cluster.name
+          value: "sandee-es-cluster"
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: discovery.seed_hosts
+          value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch,elasticsearch-2.elasticsearch"
+        - name: cluster.initial_master_nodes
+          value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+        - name: xpack.security.enabled
+          value: "false"
+        - name: ES_JAVA_OPTS
+          value: "-Xms8g -Xmx8g"  # Increased from 4g
+        - name: index.number_of_replicas
+          value: "1"  # Changed from 0 for redundancy
+        - name: bootstrap.memory_lock
+          value: "true"
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
+        resources:
+          requests:
+            cpu: 2000m      # Increased from 1000m
+            memory: 10Gi    # Increased from 5Gi
+          limits:
+            cpu: 4000m      # Increased from 2000m
+            memory: 16Gi    # Increased from 8Gi
+        volumeMounts:
+        - name: es-data
+          mountPath: /usr/share/elasticsearch/data
+        livenessProbe:
+          httpGet: { path: /_cluster/health, port: 9200 }
+          initialDelaySeconds: 60  # Reduced from 90
+          periodSeconds: 20        # Reduced from 30
+        readinessProbe:
+          httpGet: { path: /_cluster/health, port: 9200 }
+          initialDelaySeconds: 30  # Reduced from 60
+          periodSeconds: 10        # Reduced from 15
+  volumeClaimTemplates:
+  - metadata:
+      name: es-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-production
+      resources:
+        requests:
+          storage: 200Gi  # Increased from 100Gi
+---
+# Enhanced GP3 Storage Class
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-production
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "10000"      # Increased from 5000
+  throughput: "500"  # Increased from 250
+  fsType: ext4
+  encrypted: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+---
+# Redis Service with Session Affinity
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: sandee-production
+spec:
+  selector:
+    app: redis
+  sessionAffinity: ClientIP  # Added for better performance
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  - name: redisinsight
+    port: 8001
+    targetPort: 8001
+---
+# Elasticsearch Service with Load Balancing
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: sandee-production
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+  - name: transport
+    port: 9300
+    targetPort: 9300
