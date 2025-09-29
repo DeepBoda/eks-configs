@@ -25,7 +25,7 @@ metadata:
     app: redis
 spec:
   serviceName: redis
-  replicas: 3
+  replicas: 6  # One Redis per node for maximum performance
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -88,16 +88,16 @@ spec:
           protocol: TCP
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru"
+          value: "--appendonly yes --maxmemory 2560mb --maxmemory-policy allkeys-lru"
         - name: REDIS_REPLICATION_MODE
           value: master
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
+            cpu: 600m
+            memory: 2Gi
           limits:
             cpu: "1"
-            memory: 2Gi
+            memory: 3Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -228,7 +228,7 @@ spec:
         - name: discovery.seed_hosts
           value: "elasticsearch-0.elasticsearch.sandee-production.svc.cluster.local,elasticsearch-1.elasticsearch.sandee-production.svc.cluster.local,elasticsearch-2.elasticsearch.sandee-production.svc.cluster.local"
         - name: cluster.initial_master_nodes
-          value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+          value: "elasticsearch-0"
         - name: xpack.security.enabled
           value: "false"
         - name: xpack.security.enrollment.enabled
@@ -266,11 +266,11 @@ spec:
           protocol: TCP
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
+            cpu: 800m
+            memory: 3Gi
           limits:
-            cpu: "1"
-            memory: 2Gi
+            cpu: "1200m"
+            memory: 3Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -332,7 +332,7 @@ metadata:
     component: frontend
     performance-tier: ultra
 spec:
-  replicas: 8
+  replicas: 15  # Optimized scaling for balanced performance
   revisionHistoryLimit: 3  # Reduced for efficiency
   strategy:
     type: RollingUpdate
@@ -410,7 +410,7 @@ spec:
         - name: NEXT_PUBLIC_DEV_BASE_URL
           value: "http://sandee-backend:8008"
         - name: NODE_OPTIONS
-          value: "--max-old-space-size=2048"  # Restored to working value for stability
+          value: "--max-old-space-size=1200"  # Optimized for 1.5Gi container (leave 300MB for system)
         - name: NODE_ENV
           value: "production"
         - name: PORT
@@ -421,11 +421,11 @@ spec:
           value: "16"  # Increased thread pool for better I/O performance
         resources:
           requests:
-            cpu: 300m
-            memory: 512Mi
+            cpu: 500m
+            memory: 1500Mi
           limits:
             cpu: "1"
-            memory: 1Gi
+            memory: 2Gi
         lifecycle:
           preStop:
             exec: { command: ["sh", "-c", "sleep 5"] }  # Reduced for faster scaling
@@ -457,9 +457,9 @@ spec:
             httpHeaders:
             - name: User-Agent
               value: "k8s-readiness-probe"
-          initialDelaySeconds: 10  # Reduced from 20
-          periodSeconds: 5         # Reduced from 10
-          timeoutSeconds: 3
+          initialDelaySeconds: 5   # Faster readiness detection
+          periodSeconds: 3         # More frequent checks
+          timeoutSeconds: 2
           failureThreshold: 2
         volumeMounts:
         - name: tmp
@@ -492,7 +492,7 @@ metadata:
     component: backend
     performance-tier: ultra
 spec:
-  replicas: 6
+  replicas: 12  # Scaled for 55-60% memory utilization on 96GB cluster
   revisionHistoryLimit: 3
   strategy:
     type: RollingUpdate
@@ -572,13 +572,13 @@ spec:
         - name: REDIS_MASTER_URL
           value: redis://redis:6379
         - name: REDIS_CLUSTER_NODES
-          value: redis-0.redis.sandee-production.svc.cluster.local:6379,redis-1.redis.sandee-production.svc.cluster.local:6379,redis-2.redis.sandee-production.svc.cluster.local:6379
+          value: redis-0.redis.sandee-production.svc.cluster.local:6379,redis-1.redis.sandee-production.svc.cluster.local:6379,redis-2.redis.sandee-production.svc.cluster.local:6379,redis-3.redis.sandee-production.svc.cluster.local:6379,redis-4.redis.sandee-production.svc.cluster.local:6379,redis-5.redis.sandee-production.svc.cluster.local:6379
         - name: ELASTIC_URL
           value: http://elasticsearch:9200
         - name: ELASTICSEARCH_NODES
           value: "http://elasticsearch-0.elasticsearch.sandee-production.svc.cluster.local:9200,http://elasticsearch-1.elasticsearch.sandee-production.svc.cluster.local:9200,http://elasticsearch-2.elasticsearch.sandee-production.svc.cluster.local:9200"
         - name: NODE_OPTIONS
-          value: "--max-old-space-size=2048"  # Restored to working value for stability
+          value: "--max-old-space-size=1700"  # Optimized for 2Gi container (leave 300MB for system)
         - name: NODE_ENV
           value: "production"
         - name: PORT
@@ -586,20 +586,20 @@ spec:
         - name: UV_THREADPOOL_SIZE
           value: "32"  # Increased for better I/O performance
         - name: REDIS_POOL_SIZE
-          value: "20"  # Connection pool optimization
+          value: "30"  # Increased for better Redis performance
         - name: ELASTICSEARCH_POOL_SIZE
-          value: "15"
+          value: "25"  # Increased for better search performance
         - name: REQUEST_TIMEOUT
           value: "30000"
         - name: KEEP_ALIVE_TIMEOUT
           value: "65000"
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
-          limits:
-            cpu: "1"
+            cpu: 700m
             memory: 2Gi
+          limits:
+            cpu: "1200m"
+            memory: 3Gi
         lifecycle:
           preStop:
             exec: { command: ["sh", "-c", "sleep 5"] }  # Reduced for faster scaling
@@ -631,8 +631,8 @@ spec:
             httpHeaders:
             - name: User-Agent
               value: "k8s-readiness-probe"
-          initialDelaySeconds: 5   # Reduced from 10
-          periodSeconds: 3         # Reduced from 5
+          initialDelaySeconds: 3   # Faster readiness detection
+          periodSeconds: 2         # More frequent checks
           timeoutSeconds: 2
           failureThreshold: 2
         volumeMounts:
@@ -784,7 +784,6 @@ metadata:
       stickiness.enabled=false,
       stickiness.type=lb_cookie,
       stickiness.lb_cookie.duration_seconds=86400,
-      load_balancing.algorithm.type=least_outstanding_requests,
       slow_start.duration_seconds=30,
       deregistration_delay.timeout_seconds=30
     alb.ingress.kubernetes.io/healthcheck-path: /health
@@ -848,9 +847,8 @@ metadata:
       idle_timeout.timeout_seconds=300
     alb.ingress.kubernetes.io/target-group-attributes: |
       stickiness.enabled=false,
-      load_balancing.algorithm.type=least_outstanding_requests,
-      slow_start.duration_seconds=15,
-      deregistration_delay.timeout_seconds=15
+      slow_start.duration_seconds=30,
+      deregistration_delay.timeout_seconds=30
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: "10"
     alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "3"
@@ -887,21 +885,21 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 8
-  maxReplicas: 20
+  minReplicas: 15
+  maxReplicas: 25
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 45  # Reduced from 65 for faster response
+        averageUtilization: 35  # Lower threshold for proactive scaling
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 60  # Reduced from 75 for better headroom
+        averageUtilization: 50  # Lower threshold for memory-based scaling
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 5   # Reduced from 15 for ultra-fast scaling
@@ -938,21 +936,21 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 6
-  maxReplicas: 15
+  minReplicas: 12
+  maxReplicas: 20
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 40  # Reduced from 60 for faster response
+        averageUtilization: 30  # Lower threshold for proactive scaling
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 60  # Reduced from 75 for better headroom
+        averageUtilization: 50  # Lower threshold for memory-based scaling
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 5   # Ultra-fast scaling
@@ -986,7 +984,7 @@ metadata:
     component: cache
     performance-tier: ultra
 spec:
-  maxUnavailable: 1  # Conservative for 3 replicas to maintain quorum
+  maxUnavailable: 2  # Updated for 6 replicas to maintain availability
   selector:
     matchLabels:
       app: redis
