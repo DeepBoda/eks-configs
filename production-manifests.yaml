@@ -154,7 +154,7 @@ metadata:
     performance-tier: ultra
 spec:
   serviceName: elasticsearch
-  replicas: 3  # Changed from 1 to 2 for high availability
+  replicas: 1  # Single instance with auto-healing
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -225,16 +225,15 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: discovery.seed_hosts
-          value: "elasticsearch-0.elasticsearch.sandee-production.svc.cluster.local,elasticsearch-1.elasticsearch.sandee-production.svc.cluster.local,elasticsearch-2.elasticsearch.sandee-production.svc.cluster.local"
-        - name: cluster.initial_master_nodes
-          value: "elasticsearch-0"
+        - name: discovery.type
+          value: "single-node"
+
         - name: xpack.security.enabled
           value: "false"
         - name: xpack.security.enrollment.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms2g -Xmx2g -XX:+UseG1GC -XX:G1HeapRegionSize=16m -XX:+UseStringDeduplication"  # Optimized for memory buffer requirements
+          value: "-Xms3g -Xmx3g -XX:+UseG1GC -XX:G1HeapRegionSize=16m -XX:+UseStringDeduplication"  # Optimized for memory buffer requirements
         - name: index.number_of_replicas
           value: "1"  # Changed from 0 for data redundancy
         - name: index.number_of_shards
@@ -266,11 +265,11 @@ spec:
           protocol: TCP
         resources:
           requests:
-            cpu: 800m
-            memory: 3Gi
+            cpu: 1000m
+            memory: 4Gi
           limits:
-            cpu: "1200m"
-            memory: 3Gi
+            cpu: "2"
+            memory: 6Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -576,7 +575,7 @@ spec:
         - name: ELASTIC_URL
           value: http://elasticsearch:9200
         - name: ELASTICSEARCH_NODES
-          value: "http://elasticsearch-0.elasticsearch.sandee-production.svc.cluster.local:9200,http://elasticsearch-1.elasticsearch.sandee-production.svc.cluster.local:9200,http://elasticsearch-2.elasticsearch.sandee-production.svc.cluster.local:9200"
+          value: "http://elasticsearch-0.elasticsearch.sandee-production.svc.cluster.local:9200"
         - name: NODE_OPTIONS
           value: "--max-old-space-size=1700"  # Optimized for 2Gi container (leave 300MB for system)
         - name: NODE_ENV
