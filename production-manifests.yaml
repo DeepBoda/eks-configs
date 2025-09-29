@@ -73,7 +73,7 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: true
-          readOnlyRootFilesystem: false
+          readOnlyRootFilesystem: true
           capabilities: {}      # Full capabilities
         ports:
         - containerPort: 6379
