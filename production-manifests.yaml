@@ -25,7 +25,7 @@ metadata:
     app: redis
 spec:
   serviceName: redis
-  replicas: 6  # One Redis per node for maximum performance
+  replicas: 3  # One Redis per node for maximum performance
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -83,7 +83,7 @@ spec:
           protocol: TCP
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --appendfsync everysec --maxmemory 8gb --maxmemory-policy allkeys-lru --save '' --tcp-keepalive 60 --timeout 0 --maxclients 10000"
+          value: "--appendonly yes --appendfsync everysec --maxmemory 6gb --maxmemory-policy allkeys-lru --save '' --tcp-keepalive 60 --timeout 0 --maxclients 10000"
         - name: REDIS_REPLICATION_MODE
           value: master
         resources:
