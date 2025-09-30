@@ -11,10 +11,13 @@ metadata:
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
+  iops: "5000"
+  throughput: "250"
   fsType: ext4
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
+# Redis StatefulSet with Auto-Restore
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -34,111 +37,71 @@ spec:
       labels:
         app: redis
         component: cache
-        performance-tier: ultra
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "6379"
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app: redis
-            topologyKey: kubernetes.io/hostname
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: node.kubernetes.io/instance-type
-                operator: In
-                values: ["m6i.xlarge", "m6i.2xlarge", "m6i.4xlarge"]
-      topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: topology.kubernetes.io/zone
-        whenUnsatisfiable: DoNotSchedule
-        labelSelector:
-          matchLabels:
-            app: redis
       securityContext:
-        runAsNonRoot: false    # Full access
-        runAsUser: 0
-        fsGroup: 0
-        seccompProfile:
-          type: RuntimeDefault
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: redis
         image: redis/redis-stack:7.2.0-v9
         imagePullPolicy: IfNotPresent
         securityContext:
-          allowPrivilegeEscalation: true
-          readOnlyRootFilesystem: true
-          capabilities: {}      # Full capabilities
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities: { drop: ["ALL"] }
         ports:
         - containerPort: 6379
-          name: redis
-          protocol: TCP
         - containerPort: 8001
-          name: redisinsight
-          protocol: TCP
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --appendfsync everysec --maxmemory 6gb --maxmemory-policy allkeys-lru --save '' --tcp-keepalive 60 --timeout 0 --maxclients 10000"
-        - name: REDIS_REPLICATION_MODE
-          value: master
-        resources:
-          requests:
-            cpu: 1
-            memory: 4Gi
-          limits:
-            cpu: "2"
-            memory: 8Gi
+          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 100000"
         volumeMounts:
         - name: redis-data
           mountPath: /data
-        - name: redis-tmp
-          mountPath: /tmp
-        - name: redis-config
-          mountPath: /usr/local/etc/redis
+        - name: redis-backup
+          mountPath: /backup
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - sh
+              - -c
+              - |
+                if [ ! -f /data/dump.rdb ] && [ -f /backup/dump.rdb ]; then
+                  echo "Restoring initial Redis backup..."
+                  cp /backup/dump.rdb /data/dump.rdb
+                fi
         livenessProbe:
-          exec: { command: ["redis-cli", "--raw", "incr", "ping"] }
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 5
+          exec: { command: ["redis-cli", "ping"] }
+          initialDelaySeconds: 20
+          periodSeconds: 10
         readinessProbe:
           exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          timeoutSeconds: 2
-          failureThreshold: 2
-        startupProbe:
-          exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          timeoutSeconds: 2
-          failureThreshold: 30
-      volumes:
-      - name: redis-tmp
-        emptyDir: {}
-      - name: redis-config
-        emptyDir: {}
-      terminationGracePeriodSeconds: 60
+          initialDelaySeconds: 10
+          periodSeconds: 5
   volumeClaimTemplates:
   - metadata:
       name: redis-data
-      labels:
-        app: redis
-        component: storage
     spec:
       accessModes: ["ReadWriteOnce"]
       storageClassName: gp3-simple
       resources:
         requests:
-          storage: 100Gi   # Big enough for persistent high-speed usage
+          storage: 100Gi
+  - metadata:
+      name: redis-backup
+    spec:
+      accessModes: ["ReadOnlyMany"]
+      storageClassName: gp3-simple
+      resources:
+        requests:
+          storage: 100Gi
 ---
-# High-Availability Elasticsearch Cluster - Optimized for Performance and Resilience
+# Elasticsearch (single-node, fixed)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -146,12 +109,9 @@ metadata:
   namespace: sandee-production
   labels:
     app: elasticsearch
-    component: search
-    performance-tier: ultra
 spec:
   serviceName: elasticsearch
-  replicas: 1  # Single instance with auto-healing
-  podManagementPolicy: Parallel
+  replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
@@ -159,40 +119,13 @@ spec:
     metadata:
       labels:
         app: elasticsearch
-        component: search
-        performance-tier: ultra
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9200"
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app: elasticsearch
-            topologyKey: kubernetes.io/hostname
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: node.kubernetes.io/instance-type
-                operator: In
-                values: ["m6i.xlarge", "m6i.2xlarge", "m6i.4xlarge"]
-      topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: topology.kubernetes.io/zone
-        whenUnsatisfiable: DoNotSchedule
-        labelSelector:
-          matchLabels:
-            app: elasticsearch
       securityContext:
-        fsGroup: 1000
         runAsUser: 1000
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+        fsGroup: 1000
       initContainers:
       - name: increase-vm-max-map-count
         image: busybox:1.36
@@ -206,14 +139,10 @@ spec:
           privileged: true
       containers:
       - name: elasticsearch
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3  # Updated to latest stable
-        imagePullPolicy: IfNotPresent
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities: { drop: ["ALL"] }
-          runAsNonRoot: true
-          runAsUser: 1000
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
         env:
         - name: cluster.name
           value: "sandee-es-cluster"
@@ -223,98 +152,32 @@ spec:
               fieldPath: metadata.name
         - name: discovery.type
           value: "single-node"
-
         - name: xpack.security.enabled
           value: "false"
-        - name: xpack.security.enrollment.enabled
-          value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms3g -Xmx3g -XX:+UseG1GC -XX:G1HeapRegionSize=16m -XX:+UseStringDeduplication"  # Optimized for memory buffer requirements
+          value: "-Xms3g -Xmx3g"
         - name: index.number_of_replicas
-          value: "1"  # Changed from 0 for data redundancy
-        - name: index.number_of_shards
-          value: "3"
-        - name: bootstrap.memory_lock
-          value: "true"
-        - name: cluster.routing.allocation.disk.threshold_enabled
-          value: "true"
-        - name: cluster.routing.allocation.disk.watermark.low
-          value: "85%"
-        - name: cluster.routing.allocation.disk.watermark.high
-          value: "90%"
-        - name: cluster.routing.allocation.disk.watermark.flood_stage
-          value: "95%"
-        - name: indices.memory.index_buffer_size
-          value: "20%"
-        - name: indices.queries.cache.size
-          value: "20%"
-        - name: thread_pool.write.queue_size
-          value: "1000"
-        - name: thread_pool.search.queue_size
-          value: "1000"
-        ports:
-        - containerPort: 9200
-          name: http
-          protocol: TCP
-        - containerPort: 9300
-          name: transport
-          protocol: TCP
-        resources:
-          requests:
-            cpu: 1000m
-            memory: 4Gi
-          limits:
-            cpu: "2"
-            memory: 6Gi
+          value: "0"
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
-        - name: es-tmp
-          mountPath: /tmp
-        - name: es-logs
-          mountPath: /usr/share/elasticsearch/logs
         livenessProbe:
-          httpGet:
-            path: /_cluster/health?local=true
-            port: 9200
-          initialDelaySeconds: 60  # Reduced from 90
-          periodSeconds: 20        # Reduced from 30
-          timeoutSeconds: 10
-          failureThreshold: 3
+          httpGet: { path: /_cluster/health, port: 9200 }
+          initialDelaySeconds: 90
+          periodSeconds: 30
         readinessProbe:
-          httpGet:
-            path: /_cluster/health?wait_for_status=yellow&timeout=5s
-            port: 9200
-          initialDelaySeconds: 30  # Reduced from 60
-          periodSeconds: 10        # Reduced from 15
-          timeoutSeconds: 5
-          failureThreshold: 3
-        startupProbe:
-          httpGet:
-            path: /_cluster/health?local=true
-            port: 9200
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 30
-      volumes:
-      - name: es-tmp
-        emptyDir: {}
-      - name: es-logs
-        emptyDir: {}
-      terminationGracePeriodSeconds: 120  # Increased for graceful shutdown
+          httpGet: { path: /_cluster/health, port: 9200 }
+          initialDelaySeconds: 60
+          periodSeconds: 15
   volumeClaimTemplates:
   - metadata:
       name: es-data
-      labels:
-        app: elasticsearch
-        component: storage
     spec:
       accessModes: ["ReadWriteOnce"]
       storageClassName: gp3-simple
       resources:
         requests:
-          storage: 300Gi  # Increased from 100Gi for better performance
+          storage: 100Gi
 ---
 # High-Performance Frontend Deployment - Optimized for Scale and Speed
 apiVersion: apps/v1
