@@ -332,7 +332,7 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 100%  # Increased from 25% for faster deployments
+      maxSurge: 25%  # Increased from 25% for faster deployments
       maxUnavailable: 0
   selector:
     matchLabels:
@@ -492,7 +492,7 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 100%  # Increased for faster deployments
+      maxSurge: 25%  # Reduced from 100% to prevent CPU exhaustion during deployments
       maxUnavailable: 0
   selector:
     matchLabels:
