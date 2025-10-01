@@ -296,10 +296,10 @@ spec:
           value: "16"  # Increased thread pool for better I/O performance
         resources:
           requests:
-            cpu: 300m
+            cpu: 500m
             memory: 800Mi
           limits:
-            cpu: 600m
+            cpu: 1200m
             memory: 1200Mi
         lifecycle:
           preStop:
