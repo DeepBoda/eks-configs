@@ -53,7 +53,7 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities: { drop: ["ALL"] }
         ports:
         - containerPort: 6379
@@ -71,6 +71,12 @@ spec:
         volumeMounts:
         - name: redis-data
           mountPath: /data
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
         lifecycle:
           preStop:
             exec:
