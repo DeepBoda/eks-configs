@@ -3,21 +3,21 @@ kind: Namespace
 metadata:
   name: sandee-production
 ---
-# GP3 Storage Class
+# High-Performance Storage Class
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: gp3-simple
+  name: gp3-ultra
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
-  iops: "5000"
-  throughput: "250"
+  iops: "16000"
+  throughput: "1000"
   fsType: ext4
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis Cluster - ORIGINAL WORKING CONFIG
+# Redis Master-Slave Setup with Backup Restore
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -43,37 +43,38 @@ spec:
                 matchLabels:
                   app: redis
               topologyKey: kubernetes.io/hostname
-      securityContext:
-        runAsNonRoot: false
-        seccompProfile:
-          type: RuntimeDefault
       containers:
       - name: redis
-        image: redis/redis-stack:latest
-        imagePullPolicy: IfNotPresent
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          capabilities: { drop: ["ALL"] }
+        image: redis/redis-stack:7.2.0-v9
         ports:
         - containerPort: 6379
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 100000 --appendfsync no --save 900 1"
+          value: "--appendonly yes --maxmemory 8gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 100000 --appendfsync no --save 900 1"
         resources:
           requests:
-            cpu: 500m
-            memory: 5Gi
+            cpu: "1"
+            memory: 6Gi
           limits:
             cpu: "2"
-            memory: 8Gi
+            memory: 10Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
         - name: tmp
           mountPath: /tmp
         lifecycle:
+          postStart:
+            exec:
+              command:
+              - sh
+              - -c
+              - |
+                sleep 10
+                if [ "$HOSTNAME" != "redis-0" ]; then
+                  redis-cli slaveof redis-0.redis.sandee-production.svc.cluster.local 6379
+                fi
           preStop:
             exec:
               command:
@@ -85,34 +86,32 @@ spec:
                 sleep 5
         livenessProbe:
           exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 20
-          periodSeconds: 10
+          initialDelaySeconds: 30
+          periodSeconds: 15
         readinessProbe:
           exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 10
+          initialDelaySeconds: 15
           periodSeconds: 5
       volumes:
       - name: tmp
         emptyDir:
-          sizeLimit: 1Gi
+          sizeLimit: 2Gi
   volumeClaimTemplates:
   - metadata:
       name: redis-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-simple
+      storageClassName: gp3-ultra
       resources:
         requests:
-          storage: 100Gi
+          storage: 50Gi
 ---
-# Elasticsearch - Optimized for m6i.xlarge
+# Elasticsearch Single Node
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: elasticsearch
   namespace: sandee-production
-  labels:
-    app: elasticsearch
 spec:
   serviceName: elasticsearch
   replicas: 1
@@ -123,9 +122,6 @@ spec:
     metadata:
       labels:
         app: elasticsearch
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9200"
     spec:
       securityContext:
         runAsUser: 1000
@@ -138,25 +134,24 @@ spec:
           privileged: true
       containers:
       - name: elasticsearch
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
         ports:
         - containerPort: 9200
         - containerPort: 9300
         env:
-        - name: cluster.name
-          value: "sandee-es-cluster"
-        - name: node.name
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: discovery.type
-          value: "single-node"
+          value: single-node
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms3g -Xmx3g"
-        - name: index.number_of_replicas
-          value: "0"
+          value: "-Xms4g -Xmx4g"
+        resources:
+          requests:
+            cpu: "1"
+            memory: 6Gi
+          limits:
+            cpu: "2"
+            memory: 8Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -166,12 +161,10 @@ spec:
           httpGet: { path: /_cluster/health, port: 9200 }
           initialDelaySeconds: 60
           periodSeconds: 30
-          timeoutSeconds: 10
         readinessProbe:
           httpGet: { path: /_cluster/health, port: 9200 }
           initialDelaySeconds: 30
           periodSeconds: 15
-          timeoutSeconds: 5
       volumes:
       - name: tmp
         emptyDir:
@@ -181,10 +174,10 @@ spec:
       name: es-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-simple
+      storageClassName: gp3-ultra
       resources:
         requests:
-          storage: 30Gi
+          storage: 100Gi
 ---
 # High-Performance Frontend Deployment - Optimized for Scale and Speed
 apiVersion: apps/v1
