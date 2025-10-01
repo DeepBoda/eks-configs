@@ -65,7 +65,7 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly no --save '' --maxmemory 3gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000 --tcp-keepalive 300 --timeout 0"
+          value: "--appendonly yes --appendfsync no --save 900 1 --maxmemory 3gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000 --tcp-keepalive 300 --timeout 0"
         resources:
           requests:
             cpu: 800m
@@ -87,15 +87,16 @@ spec:
               - |
                 redis-cli config set tcp-nodelay yes
                 redis-cli config set slowlog-log-slower-than 10000
+                redis-cli config set appendfsync no
           preStop:
             exec:
               command:
               - sh
               - -c
               - |
-                redis-cli config set appendonly yes
+                redis-cli config set appendfsync everysec
                 redis-cli bgsave
-                sleep 5
+                sleep 10
         livenessProbe:
           exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 30
