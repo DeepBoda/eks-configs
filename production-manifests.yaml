@@ -51,7 +51,7 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 8gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 500000 --appendfsync everysec --save 900 1 --auto-aof-rewrite-percentage 100 --auto-aof-rewrite-min-size 64mb"
+          value: "--appendonly yes --maxmemory 8gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 500000 --appendfsync no --save 60 1000 --auto-aof-rewrite-percentage 100 --auto-aof-rewrite-min-size 64mb --tcp-keepalive 300 --timeout 0 --tcp-backlog 511 --databases 16 --stop-writes-on-bgsave-error no --rdbcompression yes --rdbchecksum yes --hz 10"
         resources:
           requests:
             cpu: "1"
@@ -81,9 +81,10 @@ spec:
               - sh
               - -c
               - |
-                redis-cli config set appendfsync everysec
+                redis-cli config set appendfsync always
+                redis-cli config rewrite
                 redis-cli bgsave
-                sleep 5
+                sleep 10
         livenessProbe:
           exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 30
@@ -126,12 +127,6 @@ spec:
       securityContext:
         runAsUser: 1000
         fsGroup: 1000
-      initContainers:
-      - name: increase-vm-max-map-count
-        image: busybox:1.36
-        command: ["sysctl", "-w", "vm.max_map_count=262144"]
-        securityContext:
-          privileged: true
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.17.14
