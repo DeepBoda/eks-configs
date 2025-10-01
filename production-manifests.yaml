@@ -7,7 +7,7 @@ metadata:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: gp3-simple
+  name: gp3-production
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
@@ -17,18 +17,15 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis StatefulSet - Optimized for m6i.xlarge (4 vCPU, 16GB RAM)
+# Redis Cluster - ORIGINAL WORKING CONFIG
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis
   namespace: sandee-production
-  labels:
-    app: redis
 spec:
   serviceName: redis
   replicas: 3
-  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: redis
@@ -36,58 +33,45 @@ spec:
     metadata:
       labels:
         app: redis
-        component: cache
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "6379"
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: redis
+              topologyKey: kubernetes.io/hostname
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
-      topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: DoNotSchedule
-        labelSelector:
-          matchLabels:
-            app: redis
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: redis
-        image: redis/redis-stack:7.2.0-v9
+        image: redis/redis-stack:latest
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
+          readOnlyRootFilesystem: true
           capabilities: { drop: ["ALL"] }
         ports:
         - containerPort: 6379
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --appendfsync no --save 900 1 --maxmemory 3gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000 --tcp-keepalive 300 --timeout 0"
+          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 100000 --appendfsync no --save 900 1"
         resources:
           requests:
-            cpu: 800m
-            memory: 4Gi
-          limits:
-            cpu: "1500m"
+            cpu: 500m
             memory: 5Gi
+          limits:
+            cpu: "2"
+            memory: 8Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
-        - name: tmp
-          mountPath: /tmp
         lifecycle:
-          postStart:
-            exec:
-              command:
-              - sh
-              - -c
-              - |
-                redis-cli config set tcp-nodelay yes
-                redis-cli config set slowlog-log-slower-than 10000
-                redis-cli config set appendfsync no
           preStop:
             exec:
               command:
@@ -96,30 +80,24 @@ spec:
               - |
                 redis-cli config set appendfsync everysec
                 redis-cli bgsave
-                sleep 10
+                sleep 5
         livenessProbe:
           exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 30
-          periodSeconds: 15
-          timeoutSeconds: 5
+          initialDelaySeconds: 20
+          periodSeconds: 10
         readinessProbe:
           exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 10
           periodSeconds: 5
-          timeoutSeconds: 3
-      volumes:
-      - name: tmp
-        emptyDir:
-          sizeLimit: 1Gi
   volumeClaimTemplates:
   - metadata:
       name: redis-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-simple
+      storageClassName: gp3-production
       resources:
         requests:
-          storage: 50Gi
+          storage: 100Gi
 ---
 # Elasticsearch - Optimized for m6i.xlarge
 apiVersion: apps/v1
