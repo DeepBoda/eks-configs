@@ -7,7 +7,7 @@ metadata:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: gp3-production
+  name: gp3-simple
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
@@ -100,7 +100,7 @@ spec:
       name: redis-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: gp3-production
+      storageClassName: gp3-simple
       resources:
         requests:
           storage: 100Gi
