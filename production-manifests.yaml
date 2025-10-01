@@ -51,7 +51,7 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 8gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 100000 --appendfsync no --save 900 1"
+          value: "--appendonly yes --maxmemory 8gb --maxmemory-policy noeviction --bind 0.0.0.0 --protected-mode no --maxclients 500000 --appendfsync everysec --save 900 1 --auto-aof-rewrite-percentage 100 --auto-aof-rewrite-min-size 64mb"
         resources:
           requests:
             cpu: "1"
@@ -106,7 +106,7 @@ spec:
         requests:
           storage: 50Gi
 ---
-# Elasticsearch Single Node
+# Elasticsearch Single Node - Fixed Version
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -134,7 +134,7 @@ spec:
           privileged: true
       containers:
       - name: elasticsearch
-        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.14
         ports:
         - containerPort: 9200
         - containerPort: 9300
@@ -144,14 +144,16 @@ spec:
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms4g -Xmx4g"
+          value: "-Xms3g -Xmx3g"
+        - name: bootstrap.memory_lock
+          value: "false"
         resources:
           requests:
+            cpu: 500m
+            memory: 4Gi
+          limits:
             cpu: "1"
             memory: 6Gi
-          limits:
-            cpu: "2"
-            memory: 8Gi
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
@@ -159,12 +161,14 @@ spec:
           mountPath: /tmp
         livenessProbe:
           httpGet: { path: /_cluster/health, port: 9200 }
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90
           periodSeconds: 30
+          timeoutSeconds: 10
         readinessProbe:
           httpGet: { path: /_cluster/health, port: 9200 }
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 15
+          timeoutSeconds: 5
       volumes:
       - name: tmp
         emptyDir:
@@ -177,7 +181,7 @@ spec:
       storageClassName: gp3-ultra
       resources:
         requests:
-          storage: 100Gi
+          storage: 50Gi
 ---
 # High-Performance Frontend Deployment - Optimized for Scale and Speed
 apiVersion: apps/v1
