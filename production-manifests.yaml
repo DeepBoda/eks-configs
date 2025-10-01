@@ -17,7 +17,7 @@ parameters:
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 ---
-# Redis StatefulSet with Auto-Restore
+# Redis StatefulSet - Optimized for m6i.xlarge (4 vCPU, 16GB RAM)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -45,6 +45,13 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: redis
       containers:
       - name: redis
         image: redis/redis-stack:7.2.0-v9
@@ -58,12 +65,19 @@ spec:
         - containerPort: 8001
         env:
         - name: REDIS_ARGS
-          value: "--appendonly yes --maxmemory 6gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 100000"
+          value: "--appendonly no --save '' --maxmemory 3gb --maxmemory-policy volatile-lru --bind 0.0.0.0 --protected-mode no --maxclients 50000 --tcp-keepalive 300 --timeout 0"
+        resources:
+          requests:
+            cpu: 800m
+            memory: 4Gi
+          limits:
+            cpu: "1500m"
+            memory: 5Gi
         volumeMounts:
         - name: redis-data
           mountPath: /data
-        - name: redis-backup
-          mountPath: /backup
+        - name: tmp
+          mountPath: /tmp
         lifecycle:
           postStart:
             exec:
@@ -71,18 +85,31 @@ spec:
               - sh
               - -c
               - |
-                if [ ! -f /data/dump.rdb ] && [ -f /backup/dump.rdb ]; then
-                  echo "Restoring initial Redis backup..."
-                  cp /backup/dump.rdb /data/dump.rdb
-                fi
+                redis-cli config set tcp-nodelay yes
+                redis-cli config set slowlog-log-slower-than 10000
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - |
+                redis-cli config set appendonly yes
+                redis-cli bgsave
+                sleep 5
         livenessProbe:
           exec: { command: ["redis-cli", "ping"] }
-          initialDelaySeconds: 20
-          periodSeconds: 10
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
         readinessProbe:
           exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 10
           periodSeconds: 5
+          timeoutSeconds: 3
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
   volumeClaimTemplates:
   - metadata:
       name: redis-data
@@ -91,17 +118,9 @@ spec:
       storageClassName: gp3-simple
       resources:
         requests:
-          storage: 100Gi
-  - metadata:
-      name: redis-backup
-    spec:
-      accessModes: ["ReadOnlyMany"]
-      storageClassName: gp3-simple
-      resources:
-        requests:
-          storage: 100Gi
+          storage: 50Gi
 ---
-# Elasticsearch (single-node, fixed)
+# Elasticsearch - Optimized for m6i.xlarge
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -132,11 +151,6 @@ spec:
         command: ["sysctl", "-w", "vm.max_map_count=262144"]
         securityContext:
           privileged: true
-      - name: increase-fd-ulimit
-        image: busybox:1.36
-        command: ["sh", "-c", "ulimit -n 65536"]
-        securityContext:
-          privileged: true
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
@@ -161,14 +175,22 @@ spec:
         volumeMounts:
         - name: es-data
           mountPath: /usr/share/elasticsearch/data
+        - name: tmp
+          mountPath: /tmp
         livenessProbe:
           httpGet: { path: /_cluster/health, port: 9200 }
-          initialDelaySeconds: 90
+          initialDelaySeconds: 60
           periodSeconds: 30
+          timeoutSeconds: 10
         readinessProbe:
           httpGet: { path: /_cluster/health, port: 9200 }
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           periodSeconds: 15
+          timeoutSeconds: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
   volumeClaimTemplates:
   - metadata:
       name: es-data
@@ -177,7 +199,7 @@ spec:
       storageClassName: gp3-simple
       resources:
         requests:
-          storage: 100Gi
+          storage: 30Gi
 ---
 # High-Performance Frontend Deployment - Optimized for Scale and Speed
 apiVersion: apps/v1
@@ -190,7 +212,7 @@ metadata:
     component: frontend
     performance-tier: ultra
 spec:
-  replicas: 15  # Optimized scaling for balanced performance
+  replicas: 9  # Optimized for m6i.xlarge cluster
   revisionHistoryLimit: 3  # Reduced for efficiency
   strategy:
     type: RollingUpdate
@@ -279,11 +301,11 @@ spec:
           value: "16"  # Increased thread pool for better I/O performance
         resources:
           requests:
-            cpu: 500m
-            memory: 1500Mi
+            cpu: 300m
+            memory: 800Mi
           limits:
-            cpu: "1"
-            memory: 2Gi
+            cpu: 600m
+            memory: 1200Mi
         lifecycle:
           preStop:
             exec: { command: ["sh", "-c", "sleep 5"] }  # Reduced for faster scaling
@@ -350,7 +372,7 @@ metadata:
     component: backend
     performance-tier: ultra
 spec:
-  replicas: 12  # Scaled for 55-60% memory utilization on 96GB cluster
+  replicas: 9
   revisionHistoryLimit: 3
   strategy:
     type: RollingUpdate
@@ -453,11 +475,11 @@ spec:
           value: "65000"
         resources:
           requests:
-            cpu: 700m
-            memory: 2Gi
+            cpu: 600m
+            memory: 1500Mi
           limits:
-            cpu: "1200m"
-            memory: 3Gi
+            cpu: "1"
+            memory: 2500Mi
         lifecycle:
           preStop:
             exec: { command: ["sh", "-c", "sleep 5"] }  # Reduced for faster scaling
@@ -743,8 +765,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-frontend
-  minReplicas: 15
-  maxReplicas: 25
+  minReplicas: 9
+  maxReplicas: 15
   metrics:
   - type: Resource
     resource:
@@ -794,8 +816,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: sandee-backend
-  minReplicas: 12
-  maxReplicas: 20
+  minReplicas: 9
+  maxReplicas: 15
   metrics:
   - type: Resource
     resource:
@@ -842,7 +864,7 @@ metadata:
     component: cache
     performance-tier: ultra
 spec:
-  maxUnavailable: 2  # Updated for 6 replicas to maintain availability
+  maxUnavailable: 1  # Updated for 3 replicas
   selector:
     matchLabels:
       app: redis
@@ -857,7 +879,7 @@ metadata:
     component: search
     performance-tier: ultra
 spec:
-  minAvailable: 2  # Increased from 1 to ensure cluster quorum
+  minAvailable: 1  # Single node ES
   selector:
     matchLabels:
       app: elasticsearch
@@ -872,7 +894,7 @@ metadata:
     component: frontend
     performance-tier: ultra
 spec:
-  minAvailable: "85%"  # Increased from 80% for better availability
+  minAvailable: "70%"  # Adjusted for smaller cluster
   selector:
     matchLabels:
       app: sandee-frontend
@@ -887,7 +909,7 @@ metadata:
     component: backend
     performance-tier: ultra
 spec:
-  minAvailable: "90%"  # Increased from 80% for critical backend availability
+  minAvailable: "70%"
   selector:
     matchLabels:
       app: sandee-backend
