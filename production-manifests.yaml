@@ -73,10 +73,6 @@ spec:
           mountPath: /data
         - name: tmp
           mountPath: /tmp
-      volumes:
-      - name: tmp
-        emptyDir:
-          sizeLimit: 1Gi
         lifecycle:
           preStop:
             exec:
@@ -95,6 +91,10 @@ spec:
           exec: { command: ["redis-cli", "ping"] }
           initialDelaySeconds: 10
           periodSeconds: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
   volumeClaimTemplates:
   - metadata:
       name: redis-data
